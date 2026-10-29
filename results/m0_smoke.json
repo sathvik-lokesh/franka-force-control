@@ -1,0 +1,28 @@
+{
+  "timestep_s": 0.001,
+  "gravity_hold": {
+    "seconds": 3.0,
+    "max_joint_drift_rad": 2.1316282072803006e-14
+  },
+  "stiffness_10N_k500": {
+    "x": {
+      "expected_m": 0.02,
+      "measured_m": 0.02000424225002493,
+      "rel_error": 0.00021211250124646835
+    },
+    "y": {
+      "expected_m": 0.02,
+      "measured_m": 0.020000012988589617,
+      "rel_error": 6.494294808520595e-07
+    },
+    "z": {
+      "expected_m": 0.02,
+      "measured_m": 0.020000210666255548,
+      "rel_error": 1.0533312777387394e-05
+    }
+  },
+  "pass": {
+    "gravity_hold": true,
+    "stiffness": true
+  }
+}
