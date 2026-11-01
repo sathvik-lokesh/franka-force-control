@@ -1,0 +1,226 @@
+{
+  "f_des_N": 10.0,
+  "k_pos": 500.0,
+  "v_approach": 0.02,
+  "force_pi": {
+    "kp": 0.5,
+    "ki": 20.0,
+    "ramp": 0.02,
+    "i_max": 10.0
+  },
+  "trials": [
+    {
+      "mode": "impedance",
+      "table_offset_m": -0.005,
+      "t_contact": 3.095,
+      "metrics": {
+        "contact": true,
+        "rmse_N": 3.1259294280473577,
+        "peak_N": 10.970114425484468,
+        "overshoot_N": 0.9701144254844678,
+        "settle_s": null,
+        "steady_mean_N": 7.480759956959444,
+        "steady_err_N": -2.519240043040556,
+        "steady_rmse_N": 2.519240043230035,
+        "contact_losses": 0,
+        "ft_vs_true_steady_mean_abs_N": 5.814731355879843e-08
+      }
+    },
+    {
+      "mode": "force",
+      "table_offset_m": -0.005,
+      "t_contact": 3.095,
+      "metrics": {
+        "contact": true,
+        "rmse_N": 0.13820800362590338,
+        "peak_N": 10.970114425484468,
+        "overshoot_N": 0.9701144254844678,
+        "settle_s": 0.052999999999999936,
+        "steady_mean_N": 10.000002725295941,
+        "steady_err_N": 2.7252959409196365e-06,
+        "steady_rmse_N": 2.7347963363248108e-06,
+        "contact_losses": 0,
+        "ft_vs_true_steady_mean_abs_N": 3.980385815616217e-09
+      }
+    },
+    {
+      "mode": "impedance",
+      "table_offset_m": 0.0,
+      "t_contact": 2.845,
+      "metrics": {
+        "contact": true,
+        "rmse_N": 2.08051739905689,
+        "peak_N": 10.737031863567552,
+        "overshoot_N": 0.7370318635675517,
+        "settle_s": 0.8329999999999997,
+        "steady_mean_N": 9.974500743266479,
+        "steady_err_N": -0.02549925673352149,
+        "steady_rmse_N": 0.025499278021151164,
+        "contact_losses": 0,
+        "ft_vs_true_steady_mean_abs_N": 6.19145059131122e-08
+      }
+    },
+    {
+      "mode": "force",
+      "table_offset_m": 0.0,
+      "t_contact": 2.845,
+      "metrics": {
+        "contact": true,
+        "rmse_N": 0.14071172265119636,
+        "peak_N": 10.737031863567552,
+        "overshoot_N": 0.7370318635675517,
+        "settle_s": 0.021999999999999797,
+        "steady_mean_N": 10.000002908760486,
+        "steady_err_N": 2.9087604858091254e-06,
+        "steady_rmse_N": 2.9187763959271677e-06,
+        "contact_losses": 0,
+        "ft_vs_true_steady_mean_abs_N": 4.181224948150049e-09
+      }
+    },
+    {
+      "mode": "impedance",
+      "table_offset_m": 0.005,
+      "t_contact": 2.596,
+      "metrics": {
+        "contact": true,
+        "rmse_N": 3.0215195131917314,
+        "peak_N": 12.470762837161779,
+        "overshoot_N": 2.4707628371617787,
+        "settle_s": null,
+        "steady_mean_N": 12.468266536254983,
+        "steady_err_N": 2.4682665362549834,
+        "steady_rmse_N": 2.468266536505925,
+        "contact_losses": 0,
+        "ft_vs_true_steady_mean_abs_N": 6.60810744685544e-08
+      }
+    },
+    {
+      "mode": "force",
+      "table_offset_m": 0.005,
+      "t_contact": 2.596,
+      "metrics": {
+        "contact": true,
+        "rmse_N": 0.14033902746607912,
+        "peak_N": 10.74696575890104,
+        "overshoot_N": 0.7469657589010392,
+        "settle_s": 0.021999999999999797,
+        "steady_mean_N": 10.000003112513975,
+        "steady_err_N": 3.1125139745569186e-06,
+        "steady_rmse_N": 3.123094334693769e-06,
+        "contact_losses": 0,
+        "ft_vs_true_steady_mean_abs_N": 4.402863965800503e-09
+      }
+    }
+  ],
+  "pass": {
+    "a_force_rmse_lt_1N": true,
+    "b_ft_vs_true_lt_0.1N": true
+  },
+  "ramp_sweep": [
+    {
+      "ramp_s": 0.001,
+      "table_offset_m": -0.005,
+      "rmse_N": 0.22899140875584145,
+      "peak_N": 20.189226794021913,
+      "settle_s": 0.05799999999999983
+    },
+    {
+      "ramp_s": 0.001,
+      "table_offset_m": 0.0,
+      "rmse_N": 0.22506296601405892,
+      "peak_N": 20.03358873450914,
+      "settle_s": 0.021999999999999797
+    },
+    {
+      "ramp_s": 0.001,
+      "table_offset_m": 0.005,
+      "rmse_N": 0.22513768730368755,
+      "peak_N": 20.033610846187166,
+      "settle_s": 0.021999999999999797
+    },
+    {
+      "ramp_s": 0.02,
+      "table_offset_m": -0.005,
+      "rmse_N": 0.13820800362590338,
+      "peak_N": 10.970114425484468,
+      "settle_s": 0.052999999999999936
+    },
+    {
+      "ramp_s": 0.02,
+      "table_offset_m": 0.0,
+      "rmse_N": 0.14071172265119636,
+      "peak_N": 10.737031863567552,
+      "settle_s": 0.021999999999999797
+    },
+    {
+      "ramp_s": 0.02,
+      "table_offset_m": 0.005,
+      "rmse_N": 0.14033902746607912,
+      "peak_N": 10.74696575890104,
+      "settle_s": 0.021999999999999797
+    },
+    {
+      "ramp_s": 0.05,
+      "table_offset_m": -0.005,
+      "rmse_N": 0.37479373706469793,
+      "peak_N": 10.970114425484468,
+      "settle_s": 0.05899999999999972
+    },
+    {
+      "ramp_s": 0.05,
+      "table_offset_m": 0.0,
+      "rmse_N": 0.3752063388092022,
+      "peak_N": 10.737031863567552,
+      "settle_s": 0.05699999999999994
+    },
+    {
+      "ramp_s": 0.05,
+      "table_offset_m": 0.005,
+      "rmse_N": 0.37463836382771853,
+      "peak_N": 10.74696575890104,
+      "settle_s": 0.05699999999999994
+    },
+    {
+      "ramp_s": 0.1,
+      "table_offset_m": -0.005,
+      "rmse_N": 0.6487484205654662,
+      "peak_N": 10.970114425484468,
+      "settle_s": 0.09899999999999975
+    },
+    {
+      "ramp_s": 0.1,
+      "table_offset_m": 0.0,
+      "rmse_N": 0.6475418992396587,
+      "peak_N": 10.737031863567552,
+      "settle_s": 0.09899999999999975
+    },
+    {
+      "ramp_s": 0.1,
+      "table_offset_m": 0.005,
+      "rmse_N": 0.6468045370807424,
+      "peak_N": 10.74696575890104,
+      "settle_s": 0.09899999999999975
+    },
+    {
+      "ramp_s": 0.2,
+      "table_offset_m": -0.005,
+      "rmse_N": 0.9899619433496598,
+      "peak_N": 10.970114425484468,
+      "settle_s": 0.19099999999999984
+    },
+    {
+      "ramp_s": 0.2,
+      "table_offset_m": 0.0,
+      "rmse_N": 0.9880042988886655,
+      "peak_N": 10.737031863567552,
+      "settle_s": 0.19099999999999984
+    },
+    {
+      "ramp_s": 0.2,
+      "table_offset_m": 0.005,
+      "rmse_N": 0.9870419446818723,
+      "peak_N": 10.74696575890104,
+      "settle_s": 0.19099999999999984
+    }
+  ]
+}

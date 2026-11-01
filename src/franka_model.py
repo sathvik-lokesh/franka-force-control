@@ -20,8 +20,12 @@ TCP_OFFSET = 0.1034
 HOME_Q = np.array([0, 0, 0, -1.57079, 0, 1.57079, -0.7853])
 
 
-def build_model(scene: str = "scene.xml", timestep: float = 0.001) -> mujoco.MjModel:
-    """Compile the Panda scene with torque-controlled arm joints and a TCP site."""
+def build_model(scene: str = "scene.xml", timestep: float = 0.001, task: str | None = None,
+                table_top: float = 0.45) -> mujoco.MjModel:
+    """Compile the Panda scene with torque-controlled arm joints and a TCP site.
+
+    task="press" adds a ball-tipped probe tool, a flange F/T sensor and a table.
+    """
     spec = mujoco.MjSpec.from_file(str(PANDA_DIR / scene))
     spec.option.timestep = timestep
 
@@ -38,7 +42,37 @@ def build_model(scene: str = "scene.xml", timestep: float = 0.001) -> mujoco.MjM
         act.forcerange = [-TAU_MAX[i], TAU_MAX[i]]
 
     spec.body("hand").add_site(name="tcp", pos=[0, 0, TCP_OFFSET], size=[0.005] * 3)
+    if task == "press":
+        _add_press_task(spec, table_top)
     return spec.compile()
+
+
+# Probe tool: rod + ball tip on the flange, longer than the fingers so only the ball touches.
+PROBE_RADIUS = 0.01
+PROBE_CENTER = 0.12           # flange -> ball centre [m]; ball bottom at 0.13, fingertips end ~0.11
+PROBE_MASS = 0.1
+TABLE_TOP = 0.45              # world z of the table surface [m]; probe bottom is at 0.4945 at home
+
+
+def _add_press_task(spec: mujoco.MjSpec, table_top: float) -> None:
+    hand = spec.body("hand")
+    # Geoms live on the hand body itself, so the flange sensor sees them as "tool below the sensor".
+    hand.add_geom(type=mujoco.mjtGeom.mjGEOM_CAPSULE, fromto=[0, 0, 0.06, 0, 0, PROBE_CENTER],
+                  size=[0.006, 0, 0], mass=PROBE_MASS * 0.6, contype=0, conaffinity=0,
+                  rgba=[0.2, 0.2, 0.2, 1])
+    hand.add_geom(name="probe_ball", type=mujoco.mjtGeom.mjGEOM_SPHERE, pos=[0, 0, PROBE_CENTER],
+                  size=[PROBE_RADIUS, 0, 0], mass=PROBE_MASS * 0.4, rgba=[0.9, 0.3, 0.1, 1])
+    hand.add_site(name="probe", pos=[0, 0, PROBE_CENTER], size=[0.004] * 3)
+    hand.add_site(name="ft", pos=[0, 0, 0], size=[0.004] * 3)
+    spec.add_sensor(name="ft_force", type=mujoco.mjtSensor.mjSENS_FORCE,
+                    objtype=mujoco.mjtObj.mjOBJ_SITE, objname="ft")
+    spec.add_sensor(name="ft_torque", type=mujoco.mjtSensor.mjSENS_TORQUE,
+                    objtype=mujoco.mjtObj.mjOBJ_SITE, objname="ft")
+
+    half_h = table_top / 2
+    table = spec.worldbody.add_body(name="table", pos=[0.55, 0, half_h])
+    table.add_geom(name="table_top", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.3, 0.4, half_h],
+                   rgba=[0.6, 0.5, 0.4, 1])
 
 
 def reset_home(model: mujoco.MjModel, data: mujoco.MjData) -> None:

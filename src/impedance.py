@@ -64,13 +64,24 @@ class CartesianImpedance:
         mujoco.mj_jacSite(self.model, data, self.jacp, self.jacr, self.site_id)
         return np.vstack([self.jacp[:, self.dof], self.jacr[:, self.dof]])
 
-    def step(self, data: mujoco.MjData, pos_des: np.ndarray, quat_des: np.ndarray) -> np.ndarray:
+    def step(self, data: mujoco.MjData, pos_des: np.ndarray, quat_des: np.ndarray,
+             wrench_override: dict[int, float] | None = None) -> np.ndarray:
+        """Arm torques for the desired pose.
+
+        wrench_override maps a Cartesian axis index (0..5, world frame) to a commanded
+        wrench component that replaces the spring term on that axis. Damping stays on
+        every axis. This is how the force controller takes over z while x/y/rot stay
+        impedance.
+        """
         pos, quat = self.tcp_pose(data)
         J = self.jacobian(data)
         qd = data.qvel[self.dof]
 
         e = np.concatenate([pos_des - pos, quat_error(quat_des, quat)])
-        wrench = self.K @ e - self.D @ (J @ qd)
+        spring = self.K @ e
+        for axis, value in (wrench_override or {}).items():
+            spring[axis] = value
+        wrench = spring - self.D @ (J @ qd)
         tau_task = J.T @ wrench
 
         # Dynamically consistent nullspace projector N = I - J^T Jbar^T
