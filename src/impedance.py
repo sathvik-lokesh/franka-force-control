@@ -65,13 +65,21 @@ class CartesianImpedance:
         return np.vstack([self.jacp[:, self.dof], self.jacr[:, self.dof]])
 
     def step(self, data: mujoco.MjData, pos_des: np.ndarray, quat_des: np.ndarray,
-             wrench_override: dict[int, float] | None = None) -> np.ndarray:
+             wrench_override: dict[int, float] | None = None,
+             vel_des: np.ndarray | None = None,
+             wrench_ff: np.ndarray | None = None) -> np.ndarray:
         """Arm torques for the desired pose.
 
         wrench_override maps a Cartesian axis index (0..5, world frame) to a commanded
         wrench component that replaces the spring term on that axis. Damping stays on
         every axis. This is how the force controller takes over z while x/y/rot stay
         impedance.
+
+        vel_des (6,) is the desired TCP twist; damping acts on the velocity error, so a
+        moving reference isn't dragged by D*v. None = 0 (pure regulation, as in M0/M1).
+
+        wrench_ff (6,) is added to the commanded wrench as is (e.g. cancelling the measured
+        contact friction so it doesn't leak into other axes through the arm's inertia).
         """
         pos, quat = self.tcp_pose(data)
         J = self.jacobian(data)
@@ -81,7 +89,10 @@ class CartesianImpedance:
         spring = self.K @ e
         for axis, value in (wrench_override or {}).items():
             spring[axis] = value
-        wrench = spring - self.D @ (J @ qd)
+        v_err = J @ qd if vel_des is None else J @ qd - vel_des
+        wrench = spring - self.D @ v_err
+        if wrench_ff is not None:
+            wrench = wrench + wrench_ff
         tau_task = J.T @ wrench
 
         # Dynamically consistent nullspace projector N = I - J^T Jbar^T

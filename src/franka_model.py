@@ -21,10 +21,16 @@ HOME_Q = np.array([0, 0, 0, -1.57079, 0, 1.57079, -0.7853])
 
 
 def build_model(scene: str = "scene.xml", timestep: float = 0.001, task: str | None = None,
-                table_top: float = 0.45) -> mujoco.MjModel:
+                table_top: float = 0.45, table_tilt_deg: float = 0.0,
+                friction: float | None = None, contact_dmin: float | None = None) -> mujoco.MjModel:
     """Compile the Panda scene with torque-controlled arm joints and a TCP site.
 
     task="press" adds a ball-tipped probe tool, a flange F/T sensor and a table.
+    table_tilt_deg rotates the table about the world x axis through (0.55, 0, table_top), so
+    the surface height at y is table_top + y*tan(tilt) and the start point is unchanged.
+    friction sets the sliding friction of ball and table (None = MuJoCo default 1.0).
+    contact_dmin softens the ball-table contact (solimp dmin, MuJoCo default 0.9). 0.2 models a
+    compliant pad: ~5e4 N/m measured at 10 N, friction still Coulomb within 3% (see PLAN M2).
     """
     spec = mujoco.MjSpec.from_file(str(PANDA_DIR / scene))
     spec.option.timestep = timestep
@@ -43,7 +49,7 @@ def build_model(scene: str = "scene.xml", timestep: float = 0.001, task: str | N
 
     spec.body("hand").add_site(name="tcp", pos=[0, 0, TCP_OFFSET], size=[0.005] * 3)
     if task == "press":
-        _add_press_task(spec, table_top)
+        _add_press_task(spec, table_top, table_tilt_deg, friction, contact_dmin)
     return spec.compile()
 
 
@@ -54,7 +60,8 @@ PROBE_MASS = 0.1
 TABLE_TOP = 0.45              # world z of the table surface [m]; probe bottom is at 0.4945 at home
 
 
-def _add_press_task(spec: mujoco.MjSpec, table_top: float) -> None:
+def _add_press_task(spec: mujoco.MjSpec, table_top: float, tilt_deg: float,
+                    friction: float | None, contact_dmin: float | None) -> None:
     hand = spec.body("hand")
     # Geoms live on the hand body itself, so the flange sensor sees them as "tool below the sensor".
     hand.add_geom(type=mujoco.mjtGeom.mjGEOM_CAPSULE, fromto=[0, 0, 0.06, 0, 0, PROBE_CENTER],
@@ -70,9 +77,18 @@ def _add_press_task(spec: mujoco.MjSpec, table_top: float) -> None:
                     objtype=mujoco.mjtObj.mjOBJ_SITE, objname="ft")
 
     half_h = table_top / 2
-    table = spec.worldbody.add_body(name="table", pos=[0.55, 0, half_h])
+    a = np.deg2rad(tilt_deg) / 2
+    table = spec.worldbody.add_body(name="table", pos=[0.55, 0, table_top],
+                                    quat=[np.cos(a), np.sin(a), 0, 0])
     table.add_geom(name="table_top", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.3, 0.4, half_h],
-                   rgba=[0.6, 0.5, 0.4, 1])
+                   pos=[0, 0, -half_h], rgba=[0.6, 0.5, 0.4, 1])
+    if friction is not None:
+        for g in ("table_top", "probe_ball"):
+            spec.geom(g).friction = [friction, 0.005, 0.0001]
+    if contact_dmin is not None:
+        # MuJoCo mixes the two geoms' solimp, so set both to get exactly this value.
+        for g in ("table_top", "probe_ball"):
+            spec.geom(g).solimp = [contact_dmin, 0.95, 0.001, 0.5, 2.0]
 
 
 def reset_home(model: mujoco.MjModel, data: mujoco.MjData) -> None:
