@@ -72,7 +72,7 @@ Run: `.venv/bin/python m0_smoke.py`, `.venv/bin/python m1_press.py`, `.venv/bin/
   before any controller can react. Lower approach speed or a compliant tool would cut it (M4 / M3 topic).
 - PI gains kp=0.5, ki=20 were the first guess and never tuned.
 
-### M2: wiping (force + motion together)
+### M2: wiping (force + motion together) (closed 2026-11-01: bar (b) PASS, bar (a) FAIL (sim limitation))
 - Hold 10 N while tracing a line/circle on the table.
 - Metrics: force RMSE while moving, path error, contact-loss count. Bar: zero contact loss at 5 cm/s.
 - Fixed 2026-11-01 before running:
@@ -119,6 +119,25 @@ Run: `.venv/bin/python m0_smoke.py`, `.venv/bin/python m1_press.py`, `.venv/bin/
     and report as a sim limitation, use the pad, and say so). If it doesn't -> it's arm dynamics under my
     controller (then look at the nullspace term and the joint-level response at 85 Hz).
   - Bar (a) as registered failed on the rigid probe, and the M2 write-up says so.
+- **M2 conclusion 2026-11-01 (isolation test done, `m2_isolate.py`, `results/m2_isolate.json`):**
+  - A free-floating ball on 3 slide joints (no arm, no rotation, friction purely horizontal, vertical
+    joint mechanically decoupled) with the same contact + control laws chatters the same: 4.6 kg, μ=0.5
+    -> 1478 ms (line) / 2272 ms (circle) no contact vs the arm's 1388 / 2325. 0.86 kg: 339 / 572.
+    Physically friction can't lift that probe, so the vertical motion comes from the contact model.
+  - MuJoCo docs (Computation chapter, convex model): dropping strict complementarity means "the only way
+    to initiate slip is to generate some motion in the normal direction", a resting object rises as it
+    starts to slide. Matches: chatter starts at stick->slip breakaway, grows with μ and contact stiffness,
+    is controller- and arm-independent. Force RMSE groups roughly by μ·v (μv=0.01 -> 5.3–6.7 N;
+    μv=0.025 -> 8.5–9.8 N): consistent, not proof.
+  - So: the rigid-probe chatter says nothing about a real Franka. M2 reportable results: friction lag
+    physics (bar b), and with the compliant pad on the line: force control 0.02 N RMSE flat / 0.03 N on
+    the unseen 3° tilt vs impedance 0.09 / 1.41 N (max 12.4 N), the predicted impedance weakness.
+    Circle at 5 cm/s still chatters even with the pad -> reported as sim-limited, not as a controller result.
+  - Not done on purpose: softening the contact further until the circle passes (that's tuning the
+    environment to the bar).
+- **M3 risk note:** spiral search + insertion are sliding contacts. Use the pad (dmin 0.2, 3.1e4 N/m) and
+  slow speeds (2 cm/s circle was clean), report contact losses, and cross-check any surprising result
+  with the floating-probe trick before blaming the controller.
 
 ### M3: peg-in-hole
 - Square peg, hole clearance ~1 mm, hole position perturbed ±2–5 mm (unknown to the controller).
