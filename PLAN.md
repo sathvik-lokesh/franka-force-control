@@ -306,6 +306,20 @@ F/T sensor noise + bias, 1–5 ms control delay. Re-run M1–M3 and plot how eac
     I fixed this for approach -> PI in M1 and didn't carry it over.
 - **M4 v3, fixed 2026-11-02 before running. Last iteration, reported whatever it shows:** v2 + the insert spring starts from the force PI was commanding at the switch (z_des = z + F_cmd/k).
   Same conditions and bars, fresh seeds 300–349 for none/C+/C-, 300–329 sweeps. Predictions: (a), (b), (c) pass on both sets. (d) still fails. σ = 1 N unchanged, yaw 2° unchanged.
+- **M4 v3 results 2026-11-02, the final M4 state** (`results/m4_v3.*`):
+
+  | bar | C+ | C- |
+  |---|---|---|
+  | (a) M3 ≥ 45/50 per r | PASS 50/50/50 | PASS 50/50/50 |
+  | (b) peak < 30 N | PASS 18.3 N | PASS 18.8 N |
+  | (c) M1 RMSE < 1 N | PASS 0.22 N | PASS 0.29 N |
+  | (d) M2 RMSE < 1 N, zero no-contact steps | **FAIL** 0.32 N, 4 steps | **FAIL** 0.99 N, 39 steps |
+
+  - Force vs stiff, inserted: -0.5 kg 90 vs 0/90; C- 150 vs 144/150 at 19 vs 53 N; friction 1 Nm 84 vs 77/90 at 34 vs 110 N.
+  - Counterpoints: stiff doesn't read the F/T, so σ = 1 N is 80 vs 90/90 in stiff's favour, at 61 vs 18 N. Yaw 1° 89 vs 90/90. Yaw 2° 66 vs 57/90, both poor: search geometry, not force control.
+  - **Cost of v3:** nominal peak 14.1 -> 21.5 N, because the peg now keeps pushing as it falls and hits the wall harder. Bar (b) still holds, but v3 isn't free.
+  - Bar (d) stays failed through all three versions: no-contact steps come from friction and light payload, unexplained and untouched. Not retuned.
+  - Each failure across v1, v2 and v3 traced to a design flaw of mine. M3's perfect model hid all three.
 
 ### M5: C++ 1 kHz control loop
 - Port the impedance law to C++/Eigen against the MuJoCo C API.

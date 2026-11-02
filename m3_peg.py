@@ -105,12 +105,13 @@ def set_z_gain(ctl: CartesianImpedance, k: float) -> None:
 def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.00075,
         height_err: float = 0.0, mu: float = MU, dmin: float | None = DMIN,
         keep_log: bool = False, mm: Mismatch | None = None, stiff_uses_ft: bool = False,
-        robust: bool = False) -> dict:
+        robust: bool = False, bumpless_insert: bool = False) -> dict:
     """One trial. height_err = true plate top - believed plate top.
 
     stiff_uses_ft=True is the M3 test's stiff_spiral, which timed its search start off the F/T. False is
     the really force-blind version: search starts on a timer, nothing reads the sensor.
     robust = M4 v2 for force_spiral: FreeSpaceZero contact detection and no clamp on the insert ramp.
+    bumpless_insert = M4 v3: the insert spring starts from the force the PI was commanding.
     """
     mm = mm or Mismatch()
     probe = build_model(task="peg", friction=mu, contact_dmin=dmin)
@@ -154,6 +155,7 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
     k_path = 0
     xy_hold = believed_xy.copy()
     z_ins0 = 0.0
+    last_cmd = None
     peak_total, peak_time = 0.0, 0.0
     search_f, search_nocontact = [], 0
     tare_steps = int(TARE_TIME / dt)
@@ -218,6 +220,8 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
                 if z_ins0 == 0.0:
                     xy_hold = tip[:2].copy()
                     z_ins0 = z
+                    if bumpless_insert and controller == "force_spiral" and last_cmd is not None:
+                        z_ins0 = z + last_cmd / K_SOFT     # keeps pushing as hard as PI was (last_cmd < 0)
                     switched = False
                     set_xy_gain(ctl, K_INSERT_XY if controller == "force_spiral" else K_STIFF)
                     set_z_gain(ctl, K_SOFT if controller == "force_spiral" else K_STIFF)
@@ -230,6 +234,7 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
                     override = {2: max(ctl.K[2, 2] * (z_des - z), -F_CAP)}
             elif switched:
                 override = {2: pi.wrench_z(f_est, t, dt)}
+                last_cmd = override[2]
 
         pos_des = np.array([xy_des[0], xy_des[1], z_des])
         twist = np.array([v_xy[0], v_xy[1], v_z, 0, 0, 0])

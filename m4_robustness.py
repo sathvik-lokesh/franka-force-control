@@ -4,8 +4,8 @@ Factors, levels, seeds and pass bars are fixed in PLAN.md (M4) before this was r
 tuned here. Writes results/m4_robustness.json and .png.
 
 Usage: m4_robustness.py               v1, full run
-       m4_robustness.py --v2          v2 fixes on fresh seeds, writes results/m4_v2*.
-       m4_robustness.py --plot [--v2] redraw the figure from the saved JSON
+       m4_robustness.py --version N   v2 or v3 fixes on fresh seeds, writes results/m4_vN*.
+       m4_robustness.py --plot [--version N] redraw the figure from the saved JSON
 """
 import argparse
 import json
@@ -27,8 +27,8 @@ from mismatch import Mismatch  # noqa: E402
 
 RESULTS = Path(__file__).parent / "results"
 CONFIG_B = dict(v=0.01, pitch=0.00075)
-BAR_SEEDS = {False: range(100, 150), True: range(200, 250)}       # key = v2
-SWEEP_SEEDS = {False: range(100, 130), True: range(200, 230)}
+BAR_SEEDS = {1: range(100, 150), 2: range(200, 250), 3: range(300, 350)}
+SWEEP_SEEDS = {1: range(100, 130), 2: range(200, 230), 3: range(300, 330)}
 COMBINED = dict(joint_friction_Nm=0.3, ft_noise_N=0.2, delay_ms=2, hole_yaw_deg=0.5)
 
 CONDITIONS: dict[str, dict] = {
@@ -71,11 +71,12 @@ def press_job(job: dict) -> dict:
     return out
 
 
-def m3_jobs(v2: bool = False) -> list[dict]:
+def m3_jobs(version: int = 1) -> list[dict]:
     jobs = []
     for cond in CONDITIONS:
-        seeds = BAR_SEEDS[v2] if cond in BAR_CONDITIONS else SWEEP_SEEDS[v2]
-        jobs += [dict(cond=cond, controller=c, r=r, seed=s, robust=v2, **CONFIG_B)
+        seeds = BAR_SEEDS[version] if cond in BAR_CONDITIONS else SWEEP_SEEDS[version]
+        jobs += [dict(cond=cond, controller=c, r=r, seed=s, robust=version >= 2,
+                      bumpless_insert=version >= 3, **CONFIG_B)
                  for c in ("force_spiral", "stiff_spiral") for r in m3.LEVELS for s in seeds]
     return jobs
 
@@ -107,10 +108,10 @@ def bars(table: list[dict], press: list[dict]) -> dict:
     return out
 
 
-def main(v2: bool = False) -> None:
-    jobs = m3_jobs(v2) + ([] if v2 else addendum_jobs())
-    stem = "m4_v2" if v2 else "m4_robustness"
-    press_jobs = [dict(cond=c, mode=mode, robust=v2) for c in CONDITIONS for mode in ("force", "impedance")]
+def main(version: int = 1) -> None:
+    jobs = m3_jobs(version) + (addendum_jobs() if version == 1 else [])
+    stem = f"m4_v{version}" if version > 1 else "m4_robustness"
+    press_jobs = [dict(cond=c, mode=mode, robust=version >= 2) for c in CONDITIONS for mode in ("force", "impedance")]
     print(len(jobs), "peg trials,", len(press_jobs), "press/wipe jobs", flush=True)
     with Pool(12) as pool:
         press = pool.map(press_job, press_jobs, chunksize=1)
@@ -130,7 +131,7 @@ def main(v2: bool = False) -> None:
     res = {"conditions": CONDITIONS, "bars": bars(table, press), "press": press, "table": table}
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / f"{stem}.json").write_text(json.dumps(res, indent=1))
-    (RESULTS / ("m4_v2_trials.json" if v2 else "m4_trials.json")).write_text(json.dumps(trials))
+    (RESULTS / (f"m4_v{version}_trials.json" if version > 1 else "m4_trials.json")).write_text(json.dumps(trials))
     plot(res, stem)
     report(res)
 
@@ -222,12 +223,12 @@ def plot(res: dict, stem: str = "m4_robustness") -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--plot", action="store_true")
-    ap.add_argument("--v2", action="store_true")
+    ap.add_argument("--version", type=int, default=1, choices=(1, 2, 3))
     args = ap.parse_args()
     if args.plot:
-        name = "m4_v2" if args.v2 else "m4_robustness"
+        name = f"m4_v{args.version}" if args.version > 1 else "m4_robustness"
         saved = json.loads((RESULTS / f"{name}.json").read_text())
         plot(saved, name)
         report(saved)
     else:
-        main(args.v2)
+        main(args.version)
