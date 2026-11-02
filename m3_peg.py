@@ -159,7 +159,7 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
     peak_total, peak_time = 0.0, 0.0
     search_f, search_nocontact = [], 0
     tare_steps = int(TARE_TIME / dt)
-    log = {k: [] for k in ("t", "x", "y", "z", "f_total", "fz", "phase")} if keep_log else None
+    log = {k: [] for k in ("t", "x", "y", "z", "f_total", "fz", "phase", "qpos")} if keep_log else None
 
     for step in range(int(T_LIMIT / dt)):
         t = step * dt
@@ -251,6 +251,7 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
         if keep_log:
             for k_, val in zip(log, (t, *data.site_xpos[ctl.site_id], total, fz, phase)):
                 log[k_].append(val)
+            log["qpos"].append(data.qpos.copy())
         if t_success is None and depth >= SUCCESS_DEPTH:
             t_success = t
             break
