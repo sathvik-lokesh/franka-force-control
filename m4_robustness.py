@@ -1,6 +1,6 @@
 """M4: re-run M1, M2 and M3 with the world no longer matching the controller's model.
 
-Factors, levels, seeds and pass bars are fixed in PLAN.md (M4) before this was run. Nothing is
+Factors, levels, seeds and pass bars are fixed in EXPERIMENTS.md (M4) before this was run. Nothing is
 tuned here. Writes results/m4_robustness.json and .png.
 
 Usage: m4_robustness.py               v1, full run

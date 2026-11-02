@@ -18,7 +18,7 @@ Peg 20 mm, hole 21 mm, no chamfer, 20 mm deep. The hole is 2 to 5 mm from where 
 | As believed | 150 inserted, 14.5 N peak | 150 inserted, 17.5 N peak |
 | 3 mm higher | 150 inserted, 14.6 N peak | 150 inserted, **52.4 N peak** |
 
-If the height is right, stiff control ties. It's even slightly faster. Force feedback earns its keep when the height is uncertain.
+If the height is right, stiff control ties and is slightly faster. Force feedback helps when the height is uncertain.
 
 Then with mismatch added (final controller, fresh seeds):
 
@@ -30,23 +30,23 @@ Then with mismatch added (final controller, fresh seeds):
 | F/T noise σ = 1 N | **80/90, 61 N** | 90/90, 18 N |
 | Hole yawed 2° | 66/90 | 57/90 |
 
-The last two rows are there on purpose. Stiff control doesn't read the sensor, so a bad sensor can't hurt it, and yaw 2° is hard for both because the search geometry stops covering the smaller opening.
+Stiff control doesn't read the sensor, so sensor noise can't affect it. A 2° yaw is hard for both, because the search no longer covers the smaller opening.
 
-## What I'd point out
+## Findings
 
-**The robustness test found three bugs in my own design.** The perfect-model tests had passed. All three were invisible there.
+**The mismatch tests found three design flaws.** All three had passed the perfect-model tests.
 
 1. The insert phase wasn't really force-controlled. A clamp on the position ramp left 2 N of push at the success depth, so a tool 0.2 kg too light plus a little friction stalled it at 16 mm. Removing just that clamp took three failing conditions from 0/5 to 5/5.
-2. A fixed 1 N contact threshold on a sensor that can drift. A +2 N bias fired it in free air, and in the press task the controller then drove into the table at **199 N**. Fixed by tracking the free-space reading and calling contact only on a sustained rise above it.
-3. The search-to-insert switch dropped the push from 5 N to 0 in one tick, so a light tool lifted back out of a hole it had already found. I'd already fixed this exact bug class in the first milestone and didn't carry it over. Fixing it has a cost: nominal peak force went from 14 N to 21 N.
+2. A fixed 1 N contact threshold on a sensor that can drift. A +2 N bias fired it in free air, and in the press task the controller then drove into the table at **193 N** (199 N with 1 N noise). Fixed by tracking the free-space reading and calling contact only on a sustained rise above it.
+3. The search-to-insert switch dropped the push from 5 N to 0 in one tick, so a light tool lifted back out of a hole it had already found. M1 had the same kind of bug, and that fix wasn't carried over to this switch. The fix has a cost: nominal peak force went from 14 N to 21 N.
 
-**Force control swaps one sensitivity for another.** With a wrong payload, impedance control is off by 4.9 N while force control holds zero. With a biased sensor it's the reverse: force control inherits the bias one for one (before fix 2), and impedance doesn't care.
+**Force control trades model sensitivity for sensor sensitivity.** With a wrong payload, impedance control is off by 4.9 N while force control holds zero. With a biased sensor it's the reverse: force control inherits the bias one for one (before fix 2), and impedance doesn't care.
 
-**A 0.6 mm drift nobody asked for.** Descending at k = 500, the tip drifts 0.59 mm sideways, more than the ±0.5 mm clearance, so even a perfectly placed peg clips the rim. It comes from Menagerie's joint damping, which the controller doesn't compensate. Zeroing the damping brings it to 0.036 mm.
+**Unmodelled joint damping causes 0.6 mm of sideways drift.** Descending at k = 500, the tip drifts 0.59 mm sideways, more than the ±0.5 mm clearance, so even a perfectly placed peg clips the rim. It comes from Menagerie's joint damping, which the controller doesn't compensate. Zeroing the damping brings it to 0.036 mm.
 
-## Bars that failed
+## Failed pass bars
 
-Pass bars were written down before each run ([PLAN.md](PLAN.md) has them, plus the full log). These stayed failed:
+Pass bars were written down before each run ([EXPERIMENTS.md](EXPERIMENTS.md) has them, plus the full log). These stayed failed:
 
 - **M2 (a), rigid probe wiping:** contact chatter, 1.4 s of no contact out of about 4 s. A floating probe with no arm chatters the same way, and the MuJoCo docs describe why (slip in the convex contact model needs normal motion). So it's a simulator result, and M2 only reports the compliant-pad line. The 5 cm/s circle still chatters with the pad.
 - **M3 (d), contact during search:** 5.29 % of steps without contact on the selected config, 1.09 % on the slower one, against a 1 % bar. A floating peg shows a similar pattern with friction, so the arm isn't causing it. I haven't established the mechanism.
@@ -81,7 +81,7 @@ Controller compute: **3.2 µs** median, 24.5 µs p99.9 (Python on the same trace
 
 These are from one run, and timing moves between runs: a later short rerun gave C++ p99.9 34 µs and Python 400 µs, so `verify_readme.py` only matches the saved results, and rerunning M5 will change its timing lines.
 
-This is WSL2 on a laptop, so it isn't real-time and I'm not claiming it is. Compute has plenty of margin. Scheduling is what breaks the deadline, and a real arm would need a PREEMPT_RT kernel.
+This is WSL2 on a laptop, so it isn't real-time. Compute has plenty of margin. Scheduling is what breaks the deadline, and a real arm would need a PREEMPT_RT kernel.
 
 ## Limits
 
@@ -89,7 +89,8 @@ This is WSL2 on a laptop, so it isn't real-time and I'm not claiming it is. Comp
 - Success stops at 18 mm depth, so the peg never seats on the hole floor.
 - The compliant pad softens every contact, walls included. Rigid contact still inserts 150/150 on config B, with a 27.5 N peak.
 - Tool mass in the base model is effectively zero: the hand's explicit inertial overrides the geom mass. Payload tests edit the body mass directly.
-- Command delay delays torque only, not sensing. Up to 5 ms barely mattered here, so don't read much into that.
+- Command delay delays torque only, not sensing. Up to 5 ms barely mattered here, but this isn't a full delay test.
+- The stiff controller in the M3 table uses the F/T only to time the start of its search. A fully force-blind rerun matched it (`results/m4_robustness.json`), and the mismatch table uses the blind version.
 - PI and impedance gains are first guesses. Only spiral speed and pitch were tuned, on separate dev seeds. The M4 fixes were written after seeing failures, then checked on seeds that hadn't been used.
 
 ## Run it
@@ -114,6 +115,6 @@ git -C third_party/mujoco_menagerie checkout f3b6013629c7b94f8ee93fd977b161fa835
 .venv/bin/python verify_readme.py             # checks this file's numbers against results/
 ```
 
-The Panda model is from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) (Apache-2.0).
+The Panda model is from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) (Apache-2.0). This repo is MIT licensed, see [LICENSE](LICENSE).
 
 ![Force-controlled spiral search finding a hole 3.5 mm away](results/demo_search.gif)

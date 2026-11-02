@@ -32,7 +32,7 @@ def build_model(scene: str = "scene.xml", timestep: float = 0.001, task: str | N
     the surface height at y is table_top + y*tan(tilt) and the start point is unchanged.
     friction sets the sliding friction of ball and table (None = MuJoCo default 1.0).
     contact_dmin softens the ball-table contact (solimp dmin, MuJoCo default 0.9). 0.2 models a
-    compliant pad: ~5e4 N/m measured at 10 N, friction still Coulomb within 3% (see PLAN M2).
+    compliant pad: ~5e4 N/m measured at 10 N, friction still Coulomb within 3% (see EXPERIMENTS.md, M2).
 
     task="peg" adds a square peg, the same flange F/T sensor and a plate with a blind square hole
     centred at hole_xy, top face at plate_top. friction and contact_dmin apply to peg and plate.
@@ -102,7 +102,7 @@ def _add_press_task(spec: mujoco.MjSpec, table_top: float, tilt_deg: float,
 PEG_SIDE = 0.020
 PEG_TOP = 0.06                # flange -> peg upper end
 PEG_TIP = 0.16                # flange -> peg tip
-PEG_MASS = 0.1                # has no effect: the hand's explicit <inertial> overrides geom mass (see PLAN M4)
+PEG_MASS = 0.1                # has no effect: the hand's explicit <inertial> overrides geom mass (see EXPERIMENTS.md, M4)
 HOLE_SIDE = 0.021             # 1 mm total clearance, no chamfer
 HOLE_DEPTH = 0.020
 PLATE_HALF = 0.06             # outer half-width; peg stays on the plate for any r + spiral used here

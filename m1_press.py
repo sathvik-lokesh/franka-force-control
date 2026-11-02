@@ -7,7 +7,7 @@ Two controllers, same approach (pos_des ramps down at 2 cm/s, k_pos = 500 N/m):
 
 Each runs on the nominal table and on a table that is secretly 5 mm higher or
 lower than the controller believes. Metrics use the ground-truth contact force.
-Pass bars are fixed in PLAN.md (M1) before this was run.
+Pass bars are fixed in EXPERIMENTS.md (M1) before this was run.
 """
 import json
 import sys

@@ -86,6 +86,7 @@ check("nominal peak v2", pooled(v2["table"], cond="none", controller="force_spir
 v1 = load("m4_robustness.json")
 p = lambda data, cond, mode: next(x for x in data["press"] if x["cond"] == cond and x["mode"] == mode)
 check("M4 v1 false-contact spike, noise 1 N", p(v1, "noise 1.0 N", "force")["m1"]["peak_N"], 199, 0.5)
+check("M4 v1 false-contact spike, bias +2 N", p(v1, "bias +2.0 N", "force")["m1"]["peak_N"], 193, 0.5)
 check("M4 v1 payload impedance error", abs(p(v1, "payload -0.5 kg", "impedance")["m1"]["steady_err_N"]), 4.9, 0.05)
 check("M4 v1 payload force error", abs(p(v1, "payload -0.5 kg", "force")["m1"]["steady_err_N"]), 0.0, 0.005)
 check("M4 v1 bias passes through force control", abs(p(v1, "bias -2.0 N", "force")["m1"]["steady_err_N"]), 2.0, 0.01)

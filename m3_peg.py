@@ -1,7 +1,7 @@
 """M3: square peg into a blind square hole whose position the controller doesn't know.
 
-Four controllers, defined with the pass bars in PLAN.md (M3) before any peg run:
-  force_spiral    : force-controlled spiral search, compliant insert (ours)
+Four controllers, defined with the pass bars in EXPERIMENTS.md (M3) before any peg run:
+  force_spiral    : force-controlled spiral search, compliant insert
   stiff_blind     : stiff position control straight down at the believed hole
   compliant_blind : soft impedance straight down at the believed hole, no search
   stiff_spiral    : same spiral with stiff position control, no force feedback
@@ -333,7 +333,7 @@ def dev() -> None:
 
 
 CONFIGS = {"A": dict(v=0.02, pitch=0.001),      # what the registered selection rule picks
-           "B": dict(v=0.01, pitch=0.00075)}    # chosen after seeing dev, see PLAN
+           "B": dict(v=0.01, pitch=0.00075)}    # chosen after seeing dev, see EXPERIMENTS.md
 TEST_SEEDS = range(50)
 SANITY_SEEDS = range(5)                         # r = 0: direction is meaningless
 HEIGHTS = (0.0, 0.003, -0.003)

@@ -5,7 +5,7 @@ bumpless transfer). After a settle, pos_des moves along the path in x/y with a
 trapezoidal speed profile and the matching vel_des (velocity feedforward).
 
 Conditions: flat table and a table tilted 3 deg about x that the controller
-doesn't know about. Pass bars are fixed in PLAN.md (M2) before this was run.
+doesn't know about. Pass bars are fixed in EXPERIMENTS.md (M2) before this was run.
 """
 import json
 import sys
@@ -33,7 +33,7 @@ TAIL = 0.3            # s held still after the path ends
 LINE_LEN = 0.10       # m
 CIRCLE_R = 0.05       # m
 MU = 0.5
-PAD_DMIN = 0.2        # compliant pad; None = MuJoCo default rigid contact (chatters, see PLAN M2)
+PAD_DMIN = 0.2        # compliant pad; None = MuJoCo default rigid contact (chatters, see EXPERIMENTS.md, M2)
 
 
 def trapezoid(length: float, v: float, a: float, dt: float) -> tuple[np.ndarray, np.ndarray]:

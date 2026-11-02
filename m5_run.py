@@ -1,6 +1,6 @@
 """M5: record the Python M1 force run, build the C++ port, compare torques and measure timing.
 
-Bars are fixed in PLAN.md (M5) before this was run. Writes results/m5_cpp.json.
+Bars are fixed in EXPERIMENTS.md (M5) before this was run. Writes results/m5_cpp.json.
 
 Trace record, 135 doubles per tick: pos 3, quat 4, J 42 (row-major), M 49 (row-major), q 7, qd 7,
 bias 7, pos_des 3, quat_des 4, has_override 1, override 1, tau 7.

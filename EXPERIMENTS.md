@@ -1,4 +1,6 @@
-# franka-force-control: PLAN
+# Experiment log
+
+Pass bars, seeds and predictions for each milestone, written down before the run, followed by the results and what went wrong. Dates are when the work was done. Summary in [README.md](README.md).
 
 ## Scope
 Torque-level Cartesian impedance and force control on a Franka Panda in MuJoCo,
@@ -227,7 +229,7 @@ Run: `.venv/bin/python m0_smoke.py`, `.venv/bin/python m1_press.py`, `.venv/bin/
     - Yaw error zero, ideal F/T, no chamfer, success stops at 18 mm (never seats on the floor).
     - The pad softens wall contact too.
 
-### M4: robustness (where the sim stops being perfect)
+### M4: robustness under model mismatch
 Model mismatch the real robot has: payload mass error (±0.5 kg), unmodelled joint friction,
 F/T sensor noise + bias, 1–5 ms control delay. Re-run M1–M3 and plot how each degrades.
 - Found before M4: PROBE_MASS / PEG_MASS were never applied. The hand has an explicit `<inertial>`, so MuJoCo ignores
