@@ -351,4 +351,7 @@ F/T sensor noise + bias, 1–5 ms control delay. Re-run M1–M3 and plot how eac
     by Windows; not measured. A Franka's 1 kHz FCI loop aborts on a few missed cycles, so this box under load would fault it. Compute isn't the limit, scheduling is: a real deployment needs PREEMPT_RT.
   - rt control time (8 µs) is above replay (3.2 µs): sleeping loses cache. A single C++ run, not a distribution across boots.
 
-### M6: README + demo GIFs
+### M6: README + demo GIFs (done 2026-11-02)
+- `README.md`, `results/demo_search.gif`, `results/demo_height.gif` (`m6_demo.py`, replayed from real runs, captions from run data). Only the hole floor's colour is changed, for visibility.
+- `verify_readme.py` checks quoted numbers against `results/` (0 failures). Checked separately: no Eigen heap allocation in `impedance_torque` (EIGEN_RUNTIME_NO_MALLOC).
+- Clean clone per the README: setup, M0, M1 byte-identical, one M3 trial, C++ build + M5 bars all fine. Full M2–M4 not rerun in the clone.

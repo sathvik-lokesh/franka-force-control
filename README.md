@@ -79,6 +79,8 @@ Controller compute: **3.2 µs** median, 24.5 µs p99.9 (Python on the same trace
 | Busy-wait, idle | 16 | 6.6 µs | 4.4 ms |
 | clock_nanosleep, 16 busy processes | 2404 | 3300 µs | 32.9 ms |
 
+These are from one run, and timing moves between runs: a later short rerun gave C++ p99.9 34 µs and Python 400 µs, so `verify_readme.py` only matches the saved results, and rerunning M5 will change its timing lines.
+
 This is WSL2 on a laptop, so it isn't real-time and I'm not claiming it is. Compute has plenty of margin. Scheduling is what breaks the deadline, and a real arm would need a PREEMPT_RT kernel.
 
 ## Limits
