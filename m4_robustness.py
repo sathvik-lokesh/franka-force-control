@@ -3,8 +3,9 @@
 Factors, levels, seeds and pass bars are fixed in PLAN.md (M4) before this was run. Nothing is
 tuned here. Writes results/m4_robustness.json and .png.
 
-Usage: m4_robustness.py          full run
-       m4_robustness.py --plot   redraw the figure from the saved JSON
+Usage: m4_robustness.py               v1, full run
+       m4_robustness.py --v2          v2 fixes on fresh seeds, writes results/m4_v2*.
+       m4_robustness.py --plot [--v2] redraw the figure from the saved JSON
 """
 import argparse
 import json
@@ -26,8 +27,8 @@ from mismatch import Mismatch  # noqa: E402
 
 RESULTS = Path(__file__).parent / "results"
 CONFIG_B = dict(v=0.01, pitch=0.00075)
-BAR_SEEDS = range(100, 150)
-SWEEP_SEEDS = range(100, 130)
+BAR_SEEDS = {False: range(100, 150), True: range(200, 250)}       # key = v2
+SWEEP_SEEDS = {False: range(100, 130), True: range(200, 230)}
 COMBINED = dict(joint_friction_Nm=0.3, ft_noise_N=0.2, delay_ms=2, hole_yaw_deg=0.5)
 
 CONDITIONS: dict[str, dict] = {
@@ -58,11 +59,11 @@ def press_job(job: dict) -> dict:
     cond, mode = job["cond"], job["mode"]
     params = {k: v for k, v in CONDITIONS[cond].items() if k != "hole_yaw_deg"}
     out = {"cond": cond, "mode": mode}
-    a = m1.run(mode, mm=Mismatch(**params))
+    a = m1.run(mode, mm=Mismatch(**params), robust=job["robust"])
     metrics = a["metrics"]
     out["m1"] = {k: metrics.get(k) for k in ("contact", "rmse_N", "peak_N", "steady_err_N", "settle_s")}
     try:
-        b = m2.run(mode, "line", mm=Mismatch(**params))["metrics"]
+        b = m2.run(mode, "line", mm=Mismatch(**params), robust=job["robust"])["metrics"]
         out["m2"] = {k: b[k] for k in ("force_rmse_N", "force_min_N", "force_max_N", "steps_without_contact",
                                        "lag_cruise_mm", "cross_track_rms_mm")}
     except (ValueError, IndexError) as e:     # e.g. a run that never reaches the moving phase
@@ -70,11 +71,11 @@ def press_job(job: dict) -> dict:
     return out
 
 
-def m3_jobs() -> list[dict]:
+def m3_jobs(v2: bool = False) -> list[dict]:
     jobs = []
     for cond in CONDITIONS:
-        seeds = BAR_SEEDS if cond in BAR_CONDITIONS else SWEEP_SEEDS
-        jobs += [dict(cond=cond, controller=c, r=r, seed=s, **CONFIG_B)
+        seeds = BAR_SEEDS[v2] if cond in BAR_CONDITIONS else SWEEP_SEEDS[v2]
+        jobs += [dict(cond=cond, controller=c, r=r, seed=s, robust=v2, **CONFIG_B)
                  for c in ("force_spiral", "stiff_spiral") for r in m3.LEVELS for s in seeds]
     return jobs
 
@@ -106,9 +107,10 @@ def bars(table: list[dict], press: list[dict]) -> dict:
     return out
 
 
-def main() -> None:
-    jobs = m3_jobs() + addendum_jobs()
-    press_jobs = [dict(cond=c, mode=mode) for c in CONDITIONS for mode in ("force", "impedance")]
+def main(v2: bool = False) -> None:
+    jobs = m3_jobs(v2) + ([] if v2 else addendum_jobs())
+    stem = "m4_v2" if v2 else "m4_robustness"
+    press_jobs = [dict(cond=c, mode=mode, robust=v2) for c in CONDITIONS for mode in ("force", "impedance")]
     print(len(jobs), "peg trials,", len(press_jobs), "press/wipe jobs", flush=True)
     with Pool(12) as pool:
         press = pool.map(press_job, press_jobs, chunksize=1)
@@ -127,9 +129,9 @@ def main() -> None:
         table.append(row)
     res = {"conditions": CONDITIONS, "bars": bars(table, press), "press": press, "table": table}
     RESULTS.mkdir(exist_ok=True)
-    (RESULTS / "m4_robustness.json").write_text(json.dumps(res, indent=1))
-    (RESULTS / "m4_trials.json").write_text(json.dumps(trials))
-    plot(res)
+    (RESULTS / f"{stem}.json").write_text(json.dumps(res, indent=1))
+    (RESULTS / ("m4_v2_trials.json" if v2 else "m4_trials.json")).write_text(json.dumps(trials))
+    plot(res, stem)
     report(res)
 
 
@@ -164,7 +166,7 @@ def report(res: dict) -> None:
             print(t["v"], t["pitch"], t["height_err"], t["r"], f"{t['success']}/{t['n']}", round(t["peak_max_N"], 1))
 
 
-def plot(res: dict) -> None:
+def plot(res: dict, stem: str = "m4_robustness") -> None:
     """Four panels sharing one condition axis: M3 success, M3 peak force, M1 RMSE, M2 RMSE."""
     import matplotlib
     matplotlib.use("Agg")
@@ -214,15 +216,18 @@ def plot(res: dict) -> None:
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=2, frameon=False, fontsize=10)
     fig.tight_layout(rect=(0, 0, 1, 0.96))
-    fig.savefig(RESULTS / "m4_robustness.png", dpi=130)
+    fig.savefig(RESULTS / f"{stem}.png", dpi=130)
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--plot", action="store_true")
-    if ap.parse_args().plot:
-        saved = json.loads((RESULTS / "m4_robustness.json").read_text())
-        plot(saved)
+    ap.add_argument("--v2", action="store_true")
+    args = ap.parse_args()
+    if args.plot:
+        name = "m4_v2" if args.v2 else "m4_robustness"
+        saved = json.loads((RESULTS / f"{name}.json").read_text())
+        plot(saved, name)
         report(saved)
     else:
-        main()
+        main(args.v2)

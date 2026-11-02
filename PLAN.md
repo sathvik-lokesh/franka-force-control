@@ -295,6 +295,17 @@ F/T sensor noise + bias, 1–5 ms control delay. Re-run M1–M3 and plot how eac
   - Baselines unchanged. Same conditions, same bars. Fresh seeds, because 100–149 exposed the flaws: 200–249 for none/C+/C-, 200–229 sweeps.
   - Predictions: (a), (b), (c) pass on both sets. (d) still fails, nothing here touches it. Bias ±2 N -> PI RMSE near v1's no-bias level, no 190 N spike. Payload -0.5 kg and
     friction 1 Nm insert. Yaw 2° unchanged (search geometry). A bias that appears after contact is NOT handled by fix 2.
+- **M4 v2 results 2026-11-02** (seeds 200+, `results/m4_v2.*`): C+ (a) 150/150, (b) 19.4 N, (c) 0.22 N PASS, (d) FAIL 0.32 N, 4 steps.
+  C- (a) **FAIL 22/50/48**, (b) 19.3 N, (c) 0.29 N PASS, (d) FAIL 0.99 N, 39 steps. My prediction that (a) would pass was wrong.
+  - Worked: bias ±2 N now leaves M1 at 0.19 N and M3 at 90/90 (v1 0/90 at +2), no 190 N spike. -0.5 kg 90/90 (v1 0/90), while stiff stays 0/90.
+    Friction 0.5 Nm 90/90 (v1 71), 1 Nm 71/90 (v1 0) vs stiff 74/90 at 110 N. Noise 0.5 N 90/90.
+  - Cost: debounce moves nominal M1 RMSE from 0.14 to 0.19 N.
+  - Left: σ = 1 N 75/90. 5 of 30 seeds still false-trigger in free air, so 5 ticks isn't enough debounce at that noise (well above a real sensor's).
+  - **Design flaw 3, C-'s failures: non-bumpless search -> insert switch, the same bug class as M1 v1.** Capture is real (0.12–0.43 mm from hole centre at the
+    drop). Then the push falls from ~5 N to 0 in one tick, the too-light tool lifts ~1 mm, comes out, lands beside the hole and pushes on the plate up to 18 N.
+    I fixed this for approach -> PI in M1 and didn't carry it over.
+- **M4 v3, fixed 2026-11-02 before running. Last iteration, reported whatever it shows:** v2 + the insert spring starts from the force PI was commanding at the switch (z_des = z + F_cmd/k).
+  Same conditions and bars, fresh seeds 300–349 for none/C+/C-, 300–329 sweeps. Predictions: (a), (b), (c) pass on both sets. (d) still fails. σ = 1 N unchanged, yaw 2° unchanged.
 
 ### M5: C++ 1 kHz control loop
 - Port the impedance law to C++/Eigen against the MuJoCo C API.

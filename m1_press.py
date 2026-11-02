@@ -22,7 +22,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-from force_sensing import FlangeFT, true_contact_force  # noqa: E402
+from force_sensing import FlangeFT, FreeSpaceZero, true_contact_force  # noqa: E402
 from franka_model import HOME_Q, PROBE_RADIUS, TABLE_TOP, build_model, reset_home  # noqa: E402
 from impedance import CartesianImpedance, ImpedanceGains  # noqa: E402
 from mismatch import Mismatch  # noqa: E402
@@ -69,8 +69,9 @@ class ForcePI:
 
 
 def run(mode: str, table_offset: float = 0.0, pi: ForcePI | None = None,
-        mm: Mismatch | None = None) -> dict:
-    """One press trial. table_offset = true surface height - believed surface height."""
+        mm: Mismatch | None = None, robust: bool = False) -> dict:
+    """One press trial. table_offset = true surface height - believed surface height.
+    robust = M4 v2 contact detection (FreeSpaceZero) instead of the fixed threshold."""
     mm = mm or Mismatch()
     model = build_model(task="press", table_top=TABLE_TOP + table_offset)
     believed = mm.apply(model)
@@ -81,6 +82,7 @@ def run(mode: str, table_offset: float = 0.0, pi: ForcePI | None = None,
     ctl = CartesianImpedance(model, ImpedanceGains(k_pos=K_POS, q_rest=HOME_Q.copy()), site="probe",
                              believed=believed)
     ft = mm.make_ft(model)
+    zero = FreeSpaceZero(model.opt.timestep) if robust else None
     pi = pi or ForcePI()
     dt = model.opt.timestep
 
@@ -107,7 +109,10 @@ def run(mode: str, table_offset: float = 0.0, pi: ForcePI | None = None,
         f_est = ft.contact_force(data)[2] if step >= tare_steps else 0.0
         override = None
         if mode == "force":
-            if not switched and step > tare_steps and f_est > CONTACT_THRESH:
+            touched = f_est > CONTACT_THRESH
+            if zero is not None and step >= tare_steps:
+                f_est, touched = zero.update(f_est)
+            if not switched and step > tare_steps and touched:
                 switched = True
                 z_now = data.site_xpos[ctl.site_id][2]
                 pi.reset(max(0.0, K_POS * (z_now - z_des)), t)

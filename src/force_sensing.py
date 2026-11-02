@@ -55,6 +55,40 @@ class FlangeFT:
         return f
 
 
+class FreeSpaceZero:
+    """M4 v2 contact detector. Tracks the free-space F/T reading and only calls contact when the
+    reading rises above that baseline for several ticks in a row, so a bias that appeared after the
+    tare, or noise, doesn't look like a touch. The baseline freezes at contact and stays subtracted.
+    A bias that appears after contact is not handled."""
+
+    def __init__(self, dt: float, tau: float = 0.2, warmup: float = 0.05, thresh: float = 1.0, ticks: int = 5):
+        self.a = dt / tau
+        self.warmup = int(warmup / dt)
+        self.thresh = thresh
+        self.ticks = ticks
+        self.n = 0
+        self.count = 0
+        self.baseline = 0.0
+        self.in_contact = False
+
+    def update(self, f: float) -> tuple[float, bool]:
+        """Reading along the contact axis -> (reading minus baseline, contact yet?)."""
+        if self.in_contact:
+            return f - self.baseline, True
+        self.n += 1
+        if self.n <= self.warmup:
+            self.baseline += (f - self.baseline) / self.n
+            return 0.0, False
+        rel = f - self.baseline
+        if rel > self.thresh:
+            self.count += 1
+            self.in_contact = self.count >= self.ticks
+        else:
+            self.count = 0
+            self.baseline += self.a * rel
+        return rel, self.in_contact
+
+
 def true_contact_force(model: mujoco.MjModel, data: mujoco.MjData, geom: str) -> np.ndarray:
     """Sum of all contact forces acting ON the given geom, world frame (ground truth)."""
     gid = model.geom(geom).id

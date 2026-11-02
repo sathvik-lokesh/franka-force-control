@@ -25,7 +25,7 @@ import mujoco  # noqa: E402
 import numpy as np  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-from force_sensing import FlangeFT  # noqa: E402
+from force_sensing import FreeSpaceZero  # noqa: E402
 from franka_model import HOLE_DEPTH, HOME_Q, build_model, reset_home  # noqa: E402
 from impedance import CartesianImpedance, ImpedanceGains  # noqa: E402
 from mismatch import Mismatch  # noqa: E402
@@ -104,11 +104,13 @@ def set_z_gain(ctl: CartesianImpedance, k: float) -> None:
 
 def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.00075,
         height_err: float = 0.0, mu: float = MU, dmin: float | None = DMIN,
-        keep_log: bool = False, mm: Mismatch | None = None, stiff_uses_ft: bool = False) -> dict:
+        keep_log: bool = False, mm: Mismatch | None = None, stiff_uses_ft: bool = False,
+        robust: bool = False) -> dict:
     """One trial. height_err = true plate top - believed plate top.
 
     stiff_uses_ft=True is the M3 test's stiff_spiral, which timed its search start off the F/T. False is
     the really force-blind version: search starts on a timer, nothing reads the sensor.
+    robust = M4 v2 for force_spiral: FreeSpaceZero contact detection and no clamp on the insert ramp.
     """
     mm = mm or Mismatch()
     probe = build_model(task="peg", friction=mu, contact_dmin=dmin)
@@ -131,6 +133,8 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
     ctl = CartesianImpedance(model, ImpedanceGains(k_pos=k0, q_rest=HOME_Q.copy()), site="peg_tip",
                              believed=believed)
     ft = mm.make_ft(model)
+    robust_ctl = robust and controller == "force_spiral"
+    zero = FreeSpaceZero(model.opt.timestep) if robust_ctl else None
     pi = ForcePI(f_des=F_SEARCH)
     dt = model.opt.timestep
     peg_id = model.geom("peg").id
@@ -170,6 +174,9 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
         if spiral_ctl:
             reads_ft = controller == "force_spiral" or stiff_uses_ft
             touched = reads_ft and f_est > CONTACT_THRESH and step > tare_steps
+            if zero is not None and step >= tare_steps:
+                f_est, is_touch = zero.update(f_est)
+                touched = is_touch and step > tare_steps
             if phase == "approach":
                 if touched:
                     t_first_contact = t
@@ -215,7 +222,9 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
                     set_xy_gain(ctl, K_INSERT_XY if controller == "force_spiral" else K_STIFF)
                     set_z_gain(ctl, K_SOFT if controller == "force_spiral" else K_STIFF)
                 xy_des = xy_hold
-                z_des = max(z_ins0 - V_INSERT * (t - t_drop), PLATE_TOP - HOLE_DEPTH - 0.002)
+                z_des = z_ins0 - V_INSERT * (t - t_drop)
+                if not robust_ctl:
+                    z_des = max(z_des, PLATE_TOP - HOLE_DEPTH - 0.002)   # v1 clamp: leaves 2 N at success depth
                 v_z = -V_INSERT
                 if controller == "force_spiral":
                     override = {2: max(ctl.K[2, 2] * (z_des - z), -F_CAP)}

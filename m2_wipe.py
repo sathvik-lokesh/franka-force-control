@@ -20,7 +20,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-from force_sensing import FlangeFT, true_contact_force  # noqa: E402
+from force_sensing import FlangeFT, FreeSpaceZero, true_contact_force  # noqa: E402
 from franka_model import HOME_Q, PROBE_RADIUS, TABLE_TOP, build_model, reset_home  # noqa: E402
 from impedance import CartesianImpedance, ImpedanceGains  # noqa: E402
 from mismatch import Mismatch  # noqa: E402
@@ -88,7 +88,7 @@ def make_path(kind: str, start: np.ndarray, v: float, dt: float) -> Path2D:
 
 def run(mode: str, kind: str, v: float = 0.05, tilt: float = 0.0, mu: float = MU,
         k_xy: float = K_POS, dmin: float | None = PAD_DMIN, fric_ff: bool = False,
-        mm: Mismatch | None = None) -> dict:
+        mm: Mismatch | None = None, robust: bool = False) -> dict:
     mm = mm or Mismatch()
     model = build_model(task="press", table_tilt_deg=tilt, friction=mu, contact_dmin=dmin)
     believed = mm.apply(model)
@@ -102,6 +102,7 @@ def run(mode: str, kind: str, v: float = 0.05, tilt: float = 0.0, mu: float = MU
         ctl.K[i, i] = k_xy
         ctl.D[i, i] = 2 * np.sqrt(k_xy)
     ft = mm.make_ft(model)
+    zero = FreeSpaceZero(model.opt.timestep) if robust else None
     pi = ForcePI()
     dt = model.opt.timestep
 
@@ -135,7 +136,10 @@ def run(mode: str, kind: str, v: float = 0.05, tilt: float = 0.0, mu: float = MU
         f_est = f_vec[2]
         override = None
         if mode == "force":
-            if not switched and step > tare_steps and f_est > CONTACT_THRESH:
+            touched = f_est > CONTACT_THRESH
+            if zero is not None and step >= tare_steps:
+                f_est, touched = zero.update(f_est)
+            if not switched and step > tare_steps and touched:
                 switched = True
                 z_now = data.site_xpos[ctl.site_id][2]
                 pi.reset(max(0.0, K_POS * (z_now - z_des)), t)

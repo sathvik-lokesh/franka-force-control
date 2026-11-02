@@ -1,0 +1,115 @@
+4860 peg trials, 50 press/wipe jobs
+press/wipe done
+{
+ "C+": {
+  "a_success_per_r": {
+   "0.002": 50,
+   "0.0035": 50,
+   "0.005": 50
+  },
+  "a_pass": true,
+  "b_peak_max_N": 19.40779467887083,
+  "b_pass": true,
+  "c_m1_rmse_N": 0.22166514248509608,
+  "c_pass": true,
+  "d_m2_rmse_N": 0.3222799811039541,
+  "d_m2_steps_without_contact": 4,
+  "d_pass": false
+ },
+ "C-": {
+  "a_success_per_r": {
+   "0.002": 22,
+   "0.0035": 50,
+   "0.005": 48
+  },
+  "a_pass": false,
+  "b_peak_max_N": 19.275720622850617,
+  "b_pass": true,
+  "c_m1_rmse_N": 0.28706415045148453,
+  "c_pass": true,
+  "d_m2_rmse_N": 0.9916629721304433,
+  "d_m2_steps_without_contact": 39,
+  "d_pass": false
+ }
+}
+
+M3 pooled over r: cond | force ok/n peak rmse nocontact% | stiff ok/n peak | force end phases
+none               | 150/150 per r [50, 50, 50] peak   14.1 rmse  0.64 nc  1.22 | 150/150 per r [50, 50, 50] peak   18.6 rmse  0.90 nc  2.27 | {}
+C+                 | 150/150 per r [50, 50, 50] peak   19.4 rmse  0.49 nc  0.53 | 150/150 per r [50, 50, 50] peak   29.2 rmse  1.48 nc  0.73 | {}
+C-                 | 120/150 per r [22, 50, 48] peak   19.3 rmse  0.50 nc  0.57 | 144/150 per r [44, 50, 50] peak   52.5 rmse  3.00 nc  3.21 | {'insert': 30}
+payload -0.5 kg    |  90/90 per r [30, 30, 30] peak   18.5 rmse  0.58 nc  1.01 |   0/90 per r [0, 0, 0] peak    6.3 rmse  4.85 nc 79.07 | {}
+payload -0.2 kg    |  90/90 per r [30, 30, 30] peak   14.2 rmse  0.64 nc  1.27 |  90/90 per r [30, 30, 30] peak   27.8 rmse  2.30 nc  5.46 | {}
+payload +0.2 kg    |  90/90 per r [30, 30, 30] peak   14.1 rmse  0.63 nc  1.18 |  90/90 per r [30, 30, 30] peak   20.4 rmse  1.94 nc  1.39 | {}
+payload +0.5 kg    |  90/90 per r [30, 30, 30] peak   14.8 rmse  0.65 nc  1.24 |  90/90 per r [30, 30, 30] peak   26.3 rmse  4.49 nc  0.86 | {}
+friction 0.1 Nm    |  90/90 per r [30, 30, 30] peak   22.5 rmse  0.55 nc  0.87 |  90/90 per r [30, 30, 30] peak   25.9 rmse  0.90 nc  1.69 | {}
+friction 0.3 Nm    |  90/90 per r [30, 30, 30] peak   20.6 rmse  0.51 nc  0.60 |  90/90 per r [30, 30, 30] peak   36.4 rmse  1.31 nc  1.86 | {}
+friction 0.5 Nm    |  90/90 per r [30, 30, 30] peak   21.9 rmse  0.45 nc  0.40 |  90/90 per r [30, 30, 30] peak   36.3 rmse  1.75 nc  2.10 | {}
+friction 1.0 Nm    |  71/90 per r [29, 23, 19] peak   22.7 rmse  0.36 nc  0.25 |  74/90 per r [30, 24, 20] peak  110.5 rmse  2.31 nc  3.22 | {'insert': 11, 'search': 8}
+noise 0.1 N        |  90/90 per r [30, 30, 30] peak   14.2 rmse  0.65 nc  1.26 |  90/90 per r [30, 30, 30] peak   18.6 rmse  0.87 nc  2.16 | {}
+noise 0.2 N        |  90/90 per r [30, 30, 30] peak   14.2 rmse  0.65 nc  1.27 |  90/90 per r [30, 30, 30] peak   18.6 rmse  0.87 nc  2.16 | {}
+noise 0.5 N        |  90/90 per r [30, 30, 30] peak   14.4 rmse  0.66 nc  1.28 |  90/90 per r [30, 30, 30] peak   18.6 rmse  0.87 nc  2.16 | {}
+noise 1.0 N        |  75/90 per r [25, 25, 25] peak   20.7 rmse  0.69 nc  1.32 |  90/90 per r [30, 30, 30] peak   18.6 rmse  0.87 nc  2.16 | {'insert': 15}
+bias -2.0 N        |  90/90 per r [30, 30, 30] peak   14.1 rmse  0.63 nc  1.20 |  90/90 per r [30, 30, 30] peak   18.6 rmse  0.87 nc  2.16 | {}
+bias -0.5 N        |  90/90 per r [30, 30, 30] peak   14.1 rmse  0.63 nc  1.20 |  90/90 per r [30, 30, 30] peak   18.6 rmse  0.87 nc  2.16 | {}
+bias +0.5 N        |  90/90 per r [30, 30, 30] peak   14.1 rmse  0.63 nc  1.20 |  90/90 per r [30, 30, 30] peak   18.6 rmse  0.87 nc  2.16 | {}
+bias +2.0 N        |  90/90 per r [30, 30, 30] peak   14.1 rmse  0.63 nc  1.20 |  90/90 per r [30, 30, 30] peak   18.6 rmse  0.87 nc  2.16 | {}
+delay 1 ms         |  90/90 per r [30, 30, 30] peak   14.1 rmse  0.67 nc  1.30 |  90/90 per r [30, 30, 30] peak   18.3 rmse  0.86 nc  2.13 | {}
+delay 2 ms         |  90/90 per r [30, 30, 30] peak   14.4 rmse  0.69 nc  1.35 |  90/90 per r [30, 30, 30] peak   17.5 rmse  0.87 nc  2.11 | {}
+delay 5 ms         |  90/90 per r [30, 30, 30] peak   14.9 rmse  0.72 nc  1.42 |  90/90 per r [30, 30, 30] peak   17.7 rmse  0.87 nc  2.06 | {}
+yaw 0.5 deg        |  90/90 per r [30, 30, 30] peak   12.1 rmse  0.62 nc  1.17 |  90/90 per r [30, 30, 30] peak   15.3 rmse  0.81 nc  1.99 | {}
+yaw 1.0 deg        |  88/90 per r [28, 30, 30] peak   11.9 rmse  0.62 nc  1.12 |  90/90 per r [30, 30, 30] peak   14.0 rmse  0.79 nc  1.83 | {'search': 2}
+yaw 2.0 deg        |  76/90 per r [18, 28, 30] peak   12.2 rmse  0.61 nc  0.93 |  71/90 per r [24, 24, 23] peak   12.9 rmse  0.68 nc  1.10 | {'search': 14}
+
+M1 / M2: cond | mode | M1 rmse peak steady | M2 rmse max noContact lag
+none               force     | 0.19 10.74 -0.00 | 0.02 10.1 0 9.39
+none               impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+C+                 force     | 0.22 11.43 0.02 | 0.32 11.3 4 10.91
+C+                 impedance | 2.12 11.43 0.61 | 0.95 11.6 0 11.39
+C-                 force     | 0.29 10.82 0.02 | 0.99 11.6 39 11.01
+C-                 impedance | 3.82 10.82 -3.32 | 3.73 9.8 441 9.16
+payload -0.5 kg    force     | 0.32 10.00 -0.00 | 0.02 10.1 0 9.21
+payload -0.5 kg    impedance | 5.08 9.85 -4.92 | 5.52 7.0 794 5.50
+payload -0.2 kg    force     | 0.22 10.60 -0.00 | 0.40 13.5 6 9.54
+payload -0.2 kg    impedance | 2.77 10.60 -1.98 | 2.99 9.3 294 8.03
+payload +0.2 kg    force     | 0.17 11.41 0.00 | 0.02 10.1 0 9.40
+payload +0.2 kg    impedance | 2.70 11.93 1.93 | 1.87 12.0 0 10.48
+payload +0.5 kg    force     | 0.21 12.95 -0.00 | 0.02 10.1 0 9.43
+payload +0.5 kg    impedance | 4.72 14.87 4.87 | 4.79 14.9 0 12.08
+friction 0.1 Nm    force     | 0.19 10.90 0.00 | 0.37 13.2 5 9.84
+friction 0.1 Nm    impedance | 2.13 10.90 -0.51 | 0.59 10.6 11 9.70
+friction 0.3 Nm    force     | 0.21 11.10 0.00 | 0.46 13.3 8 10.88
+friction 0.3 Nm    impedance | 2.47 11.10 -1.36 | 1.66 10.3 85 10.34
+friction 0.5 Nm    force     | 0.20 11.35 0.01 | 0.59 13.1 13 11.82
+friction 0.5 Nm    impedance | 2.46 11.35 -1.60 | 2.11 10.1 137 11.18
+friction 1.0 Nm    force     | 0.19 11.77 0.01 | 0.59 12.3 13 13.94
+friction 1.0 Nm    impedance | 2.77 11.77 -2.30 | 2.79 9.6 205 13.10
+noise 0.1 N        force     | 0.19 10.74 0.01 | 0.03 10.1 0 9.39
+noise 0.1 N        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+noise 0.2 N        force     | 0.19 10.74 0.02 | 0.04 10.2 0 9.40
+noise 0.2 N        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+noise 0.5 N        force     | 0.22 10.78 0.05 | 0.10 10.4 0 9.42
+noise 0.5 N        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+noise 1.0 N        force     | 0.29 10.92 0.05 | 0.18 10.7 0 9.42
+noise 1.0 N        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+bias -2.0 N        force     | 0.19 10.74 -0.00 | 0.02 10.1 0 9.39
+bias -2.0 N        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+bias -0.5 N        force     | 0.19 10.74 -0.00 | 0.02 10.1 0 9.39
+bias -0.5 N        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+bias +0.5 N        force     | 0.19 10.74 -0.00 | 0.02 10.1 0 9.39
+bias +0.5 N        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+bias +2.0 N        force     | 0.19 10.74 -0.00 | 0.02 10.1 0 9.39
+bias +2.0 N        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+delay 1 ms         force     | 0.21 10.75 -0.00 | 0.02 10.1 0 9.39
+delay 1 ms         impedance | 2.08 10.75 -0.03 | 0.09 10.1 0 9.36
+delay 2 ms         force     | 0.22 10.77 -0.00 | 0.02 10.1 0 9.40
+delay 2 ms         impedance | 2.09 10.77 -0.03 | 0.09 10.1 0 9.37
+delay 5 ms         force     | 0.27 11.22 -0.00 | 0.02 10.1 0 9.41
+delay 5 ms         impedance | 2.10 10.81 -0.03 | 0.09 10.1 0 9.38
+yaw 0.5 deg        force     | 0.19 10.74 -0.00 | 0.02 10.1 0 9.39
+yaw 0.5 deg        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+yaw 1.0 deg        force     | 0.19 10.74 -0.00 | 0.02 10.1 0 9.39
+yaw 1.0 deg        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+yaw 2.0 deg        force     | 0.19 10.74 -0.00 | 0.02 10.1 0 9.39
+yaw 2.0 deg        impedance | 2.08 10.74 -0.03 | 0.09 10.1 0 9.36
+
+Addendum, M3 stiff_spiral really force-blind, seeds 0-49: v pitch height r ok peak
