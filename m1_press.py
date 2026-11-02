@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from force_sensing import FlangeFT, true_contact_force  # noqa: E402
 from franka_model import HOME_Q, PROBE_RADIUS, TABLE_TOP, build_model, reset_home  # noqa: E402
 from impedance import CartesianImpedance, ImpedanceGains  # noqa: E402
+from mismatch import Mismatch  # noqa: E402
 
 RESULTS = Path(__file__).parent / "results"
 F_DES = 10.0          # N
@@ -67,14 +68,19 @@ class ForcePI:
         return -(f_ref + self.kp * e + self.integral)
 
 
-def run(mode: str, table_offset: float = 0.0, pi: ForcePI | None = None) -> dict:
+def run(mode: str, table_offset: float = 0.0, pi: ForcePI | None = None,
+        mm: Mismatch | None = None) -> dict:
     """One press trial. table_offset = true surface height - believed surface height."""
+    mm = mm or Mismatch()
     model = build_model(task="press", table_top=TABLE_TOP + table_offset)
+    believed = mm.apply(model)
+    delay = mm.make_delay()
     data = mujoco.MjData(model)
     reset_home(model, data)
     data.ctrl[7] = 255  # gripper open, out of the way of the probe
-    ctl = CartesianImpedance(model, ImpedanceGains(k_pos=K_POS, q_rest=HOME_Q.copy()), site="probe")
-    ft = FlangeFT(model)
+    ctl = CartesianImpedance(model, ImpedanceGains(k_pos=K_POS, q_rest=HOME_Q.copy()), site="probe",
+                             believed=believed)
+    ft = mm.make_ft(model)
     pi = pi or ForcePI()
     dt = model.opt.timestep
 
@@ -108,7 +114,7 @@ def run(mode: str, table_offset: float = 0.0, pi: ForcePI | None = None) -> dict
             if switched:
                 override = {2: pi.wrench_z(f_est, t, dt)}
 
-        data.ctrl[:7] = ctl.step(data, pos_des, quat0, wrench_override=override)
+        data.ctrl[:7] = delay(ctl.step(data, pos_des, quat0, wrench_override=override))
         mujoco.mj_step(model, data)
 
         f_true = true_contact_force(model, data, "probe_ball")[2]

@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from force_sensing import FlangeFT, true_contact_force  # noqa: E402
 from franka_model import HOME_Q, PROBE_RADIUS, TABLE_TOP, build_model, reset_home  # noqa: E402
 from impedance import CartesianImpedance, ImpedanceGains  # noqa: E402
+from mismatch import Mismatch  # noqa: E402
 from m1_press import CONTACT_THRESH, F_DES, K_POS, TARE_TIME, V_APPROACH, ForcePI  # noqa: E402
 
 RESULTS = Path(__file__).parent / "results"
@@ -86,16 +87,21 @@ def make_path(kind: str, start: np.ndarray, v: float, dt: float) -> Path2D:
 
 
 def run(mode: str, kind: str, v: float = 0.05, tilt: float = 0.0, mu: float = MU,
-        k_xy: float = K_POS, dmin: float | None = PAD_DMIN, fric_ff: bool = False) -> dict:
+        k_xy: float = K_POS, dmin: float | None = PAD_DMIN, fric_ff: bool = False,
+        mm: Mismatch | None = None) -> dict:
+    mm = mm or Mismatch()
     model = build_model(task="press", table_tilt_deg=tilt, friction=mu, contact_dmin=dmin)
+    believed = mm.apply(model)
+    delay = mm.make_delay()
     data = mujoco.MjData(model)
     reset_home(model, data)
     data.ctrl[7] = 255
-    ctl = CartesianImpedance(model, ImpedanceGains(k_pos=K_POS, q_rest=HOME_Q.copy()), site="probe")
+    ctl = CartesianImpedance(model, ImpedanceGains(k_pos=K_POS, q_rest=HOME_Q.copy()), site="probe",
+                             believed=believed)
     for i in (0, 1):
         ctl.K[i, i] = k_xy
         ctl.D[i, i] = 2 * np.sqrt(k_xy)
-    ft = FlangeFT(model)
+    ft = mm.make_ft(model)
     pi = ForcePI()
     dt = model.opt.timestep
 
@@ -140,8 +146,8 @@ def run(mode: str, kind: str, v: float = 0.05, tilt: float = 0.0, mu: float = MU
         if fric_ff and switched:
             # Cancel the measured tangential contact force (friction) at the TCP.
             ff = np.array([-f_vec[0], -f_vec[1], 0, 0, 0, 0])
-        data.ctrl[:7] = ctl.step(data, pos_des, quat0, wrench_override=override, vel_des=twist,
-                                 wrench_ff=ff)
+        data.ctrl[:7] = delay(ctl.step(data, pos_des, quat0, wrench_override=override, vel_des=twist,
+                                       wrench_ff=ff))
         mujoco.mj_step(model, data)
 
         f = true_contact_force(model, data, "probe_ball")

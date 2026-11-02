@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from force_sensing import FlangeFT  # noqa: E402
 from franka_model import HOLE_DEPTH, HOME_Q, build_model, reset_home  # noqa: E402
 from impedance import CartesianImpedance, ImpedanceGains  # noqa: E402
+from mismatch import Mismatch  # noqa: E402
 from m1_press import CONTACT_THRESH, TARE_TIME, V_APPROACH, ForcePI  # noqa: E402
 
 RESULTS = Path(__file__).parent / "results"
@@ -103,8 +104,13 @@ def set_z_gain(ctl: CartesianImpedance, k: float) -> None:
 
 def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.00075,
         height_err: float = 0.0, mu: float = MU, dmin: float | None = DMIN,
-        keep_log: bool = False) -> dict:
-    """One trial. height_err = true plate top - believed plate top."""
+        keep_log: bool = False, mm: Mismatch | None = None, stiff_uses_ft: bool = False) -> dict:
+    """One trial. height_err = true plate top - believed plate top.
+
+    stiff_uses_ft=True is the M3 test's stiff_spiral, which timed its search start off the F/T. False is
+    the really force-blind version: search starts on a timer, nothing reads the sensor.
+    """
+    mm = mm or Mismatch()
     probe = build_model(task="peg", friction=mu, contact_dmin=dmin)
     data = mujoco.MjData(probe)
     reset_home(probe, data)
@@ -114,14 +120,17 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
     true_top = PLATE_TOP + height_err
 
     model = build_model(task="peg", friction=mu, contact_dmin=dmin,
-                        hole_xy=tuple(true_xy), plate_top=true_top)
+                        hole_xy=tuple(true_xy), plate_top=true_top, hole_yaw_deg=mm.hole_yaw_deg)
+    believed = mm.apply(model)
+    delay = mm.make_delay()
     data = mujoco.MjData(model)
     reset_home(model, data)
     data.ctrl[7] = 255
     stiff = controller.startswith("stiff")
     k0 = K_STIFF if stiff else K_SOFT
-    ctl = CartesianImpedance(model, ImpedanceGains(k_pos=k0, q_rest=HOME_Q.copy()), site="peg_tip")
-    ft = FlangeFT(model)
+    ctl = CartesianImpedance(model, ImpedanceGains(k_pos=k0, q_rest=HOME_Q.copy()), site="peg_tip",
+                             believed=believed)
+    ft = mm.make_ft(model)
     pi = ForcePI(f_des=F_SEARCH)
     dt = model.opt.timestep
     peg_id = model.geom("peg").id
@@ -159,7 +168,8 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
         override = None
 
         if spiral_ctl:
-            touched = f_est > CONTACT_THRESH and step > tare_steps
+            reads_ft = controller == "force_spiral" or stiff_uses_ft
+            touched = reads_ft and f_est > CONTACT_THRESH and step > tare_steps
             if phase == "approach":
                 if touched:
                     t_first_contact = t
@@ -214,7 +224,7 @@ def run(controller: str, r: float, seed: int, v: float = 0.01, pitch: float = 0.
 
         pos_des = np.array([xy_des[0], xy_des[1], z_des])
         twist = np.array([v_xy[0], v_xy[1], v_z, 0, 0, 0])
-        data.ctrl[:7] = ctl.step(data, pos_des, quat0, wrench_override=override, vel_des=twist)
+        data.ctrl[:7] = delay(ctl.step(data, pos_des, quat0, wrench_override=override, vel_des=twist))
         mujoco.mj_step(model, data)
 
         total, fz = peg_contact_force(model, data, peg_id)
@@ -319,9 +329,9 @@ def test_jobs() -> list[dict]:
     for name, cfg in CONFIGS.items():
         for ctrl in ("force_spiral", "stiff_spiral"):
             for h in HEIGHTS:
-                jobs += [dict(controller=ctrl, r=r, seed=s, height_err=h, **cfg)
+                jobs += [dict(controller=ctrl, r=r, seed=s, height_err=h, stiff_uses_ft=True, **cfg)
                          for r in LEVELS for s in TEST_SEEDS]
-            jobs += [dict(controller=ctrl, r=0.0, seed=s, **cfg) for s in SANITY_SEEDS]
+            jobs += [dict(controller=ctrl, r=0.0, seed=s, stiff_uses_ft=True, **cfg) for s in SANITY_SEEDS]
         for sens in (dict(dmin=None), dict(mu=0.2), dict(mu=1.0)):
             jobs += [dict(controller="force_spiral", r=r, seed=s, **cfg, **sens)
                      for r in LEVELS for s in TEST_SEEDS]

@@ -12,8 +12,18 @@ import numpy as np
 class FlangeFT:
     """Reads the flange sensor, rotates it to world frame and removes the tare."""
 
-    def __init__(self, model: mujoco.MjModel, site: str = "ft"):
+    def __init__(self, model: mujoco.MjModel, site: str = "ft", noise_std: float = 0.0,
+                 bias_z: float = 0.0, lp_hz: float | None = None, seed: int = 0):
+        """noise_std, bias_z and lp_hz stay off for M1-M3. Call contact_force once per control tick."""
         self.model = model
+        self.noise_std = noise_std
+        self.bias_z = bias_z
+        self.rng = np.random.default_rng(seed)
+        self.alpha = None
+        if lp_hz is not None:
+            rc = 1.0 / (2 * np.pi * lp_hz)
+            self.alpha = model.opt.timestep / (rc + model.opt.timestep)
+        self.filtered = None
         self.site_id = model.site(site).id
         s = model.sensor("ft_force")
         self.adr = s.adr[0]
@@ -34,7 +44,15 @@ class FlangeFT:
         sign = -1 was checked against true_contact_force (2026-11-01): MuJoCo reports the
         force the child exerts on the parent, not the other way round.
         """
-        return sign * (self.raw_world(data) - self.tare_world)
+        f = sign * (self.raw_world(data) - self.tare_world)
+        if self.noise_std:
+            f = f + self.rng.normal(0.0, self.noise_std, 3)
+        if self.bias_z:
+            f = f + np.array([0.0, 0.0, self.bias_z])
+        if self.alpha is not None:
+            self.filtered = f if self.filtered is None else self.filtered + self.alpha * (f - self.filtered)
+            return self.filtered.copy()
+        return f
 
 
 def true_contact_force(model: mujoco.MjModel, data: mujoco.MjData, geom: str) -> np.ndarray:

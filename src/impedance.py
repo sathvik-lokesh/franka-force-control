@@ -44,8 +44,12 @@ class ImpedanceGains:
 class CartesianImpedance:
     """Computes arm torques for a desired TCP pose. Call step() once per physics step."""
 
-    def __init__(self, model: mujoco.MjModel, gains: ImpedanceGains, site: str = "tcp"):
-        self.model = model
+    def __init__(self, model: mujoco.MjModel, gains: ImpedanceGains, site: str = "tcp",
+                 believed: mujoco.MjModel | None = None):
+        """believed: the model the controller trusts for bias, Jacobian and inertia, when it differs
+        from the true one (M4). Measured joint state still comes from the true data."""
+        self.model = believed if believed is not None else model
+        self.believed_data = mujoco.MjData(believed) if believed is not None else None
         self.g = gains
         self.site_id = model.site(site).id
         self.dof = np.arange(7)
@@ -81,6 +85,11 @@ class CartesianImpedance:
         wrench_ff (6,) is added to the commanded wrench as is (e.g. cancelling the measured
         contact friction so it doesn't leak into other axes through the arm's inertia).
         """
+        if self.believed_data is not None:
+            self.believed_data.qpos[:] = data.qpos
+            self.believed_data.qvel[:] = data.qvel
+            mujoco.mj_forward(self.model, self.believed_data)
+            data = self.believed_data
         pos, quat = self.tcp_pose(data)
         J = self.jacobian(data)
         qd = data.qvel[self.dof]

@@ -23,7 +23,8 @@ HOME_Q = np.array([0, 0, 0, -1.57079, 0, 1.57079, -0.7853])
 def build_model(scene: str = "scene.xml", timestep: float = 0.001, task: str | None = None,
                 table_top: float = 0.45, table_tilt_deg: float = 0.0,
                 friction: float | None = None, contact_dmin: float | None = None,
-                hole_xy: tuple[float, float] = (0.55, 0.0), plate_top: float = 0.43) -> mujoco.MjModel:
+                hole_xy: tuple[float, float] = (0.55, 0.0), plate_top: float = 0.43,
+                hole_yaw_deg: float = 0.0) -> mujoco.MjModel:
     """Compile the Panda scene with torque-controlled arm joints and a TCP site.
 
     task="press" adds a ball-tipped probe tool, a flange F/T sensor and a table.
@@ -55,7 +56,7 @@ def build_model(scene: str = "scene.xml", timestep: float = 0.001, task: str | N
     if task == "press":
         _add_press_task(spec, table_top, table_tilt_deg, friction, contact_dmin)
     elif task == "peg":
-        _add_peg_task(spec, hole_xy, plate_top, friction, contact_dmin)
+        _add_peg_task(spec, hole_xy, plate_top, friction, contact_dmin, hole_yaw_deg)
     return spec.compile()
 
 
@@ -101,14 +102,14 @@ def _add_press_task(spec: mujoco.MjSpec, table_top: float, tilt_deg: float,
 PEG_SIDE = 0.020
 PEG_TOP = 0.06                # flange -> peg upper end
 PEG_TIP = 0.16                # flange -> peg tip
-PEG_MASS = 0.1
+PEG_MASS = 0.1                # has no effect: the hand's explicit <inertial> overrides geom mass (see PLAN M4)
 HOLE_SIDE = 0.021             # 1 mm total clearance, no chamfer
 HOLE_DEPTH = 0.020
 PLATE_HALF = 0.06             # outer half-width; peg stays on the plate for any r + spiral used here
 
 
 def _add_peg_task(spec: mujoco.MjSpec, hole_xy: tuple[float, float], plate_top: float,
-                  friction: float | None, contact_dmin: float | None) -> None:
+                  friction: float | None, contact_dmin: float | None, yaw_deg: float = 0.0) -> None:
     hand = spec.body("hand")
     half_len = (PEG_TIP - PEG_TOP) / 2
     hand.add_geom(name="peg", type=mujoco.mjtGeom.mjGEOM_BOX, pos=[0, 0, PEG_TOP + half_len],
@@ -120,7 +121,9 @@ def _add_peg_task(spec: mujoco.MjSpec, hole_xy: tuple[float, float], plate_top: 
     spec.add_sensor(name="ft_torque", type=mujoco.mjtSensor.mjSENS_TORQUE,
                     objtype=mujoco.mjtObj.mjOBJ_SITE, objname="ft")
 
-    plate = spec.worldbody.add_body(name="plate", pos=[hole_xy[0], hole_xy[1], plate_top])
+    a_yaw = np.deg2rad(yaw_deg) / 2
+    plate = spec.worldbody.add_body(name="plate", pos=[hole_xy[0], hole_xy[1], plate_top],
+                                    quat=[np.cos(a_yaw), 0, 0, np.sin(a_yaw)])
     h, a, d = HOLE_SIDE / 2, PLATE_HALF, HOLE_DEPTH
     wall = (a - h) / 2                # half thickness of each wall around the hole
     mid = h + wall

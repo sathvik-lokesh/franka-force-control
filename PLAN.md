@@ -230,6 +230,71 @@ Run: `.venv/bin/python m0_smoke.py`, `.venv/bin/python m1_press.py`, `.venv/bin/
 ### M4: robustness (where the sim stops being perfect)
 Model mismatch the real robot has: payload mass error (±0.5 kg), unmodelled joint friction,
 F/T sensor noise + bias, 1–5 ms control delay. Re-run M1–M3 and plot how each degrades.
+- Found before M4: PROBE_MASS / PEG_MASS were never applied. The hand has an explicit `<inertial>`, so MuJoCo ignores
+  geom mass on that body (tare 0.76 kg = hand 0.73 + fingers 0.03). True and believed models agree, so M0–M3 stand, with
+  an effectively massless tool. M4 changes payload through body_mass directly, COM shifted toward the tool.
+- Fixed 2026-11-02 BEFORE any M4 run:
+  - Factors (one at a time, then combined). The controller keeps believing the nominal model:
+    - payload error, true minus believed: -0.5, -0.2, +0.2, +0.5 kg (bias, J, M come from the nominal model).
+    - Coulomb joint friction, same on all 7 joints: 0.1, 0.3, 0.5, 1.0 Nm (`dof_frictionloss`; MuJoCo's is regularised).
+    - F/T noise σ: 0.1, 0.2, 0.5, 1.0 N per axis, 1st-order 100 Hz low-pass in the loop whenever noise > 0.
+    - F/T z bias appearing after the tare (drift): -2, -0.5, +0.5, +2 N.
+    - torque command delay: 1, 2, 5 ms.
+    - hole yaw error: 0.5, 1, 2° (M3 only; geometric limit for this peg/hole is 2.87°).
+  - Combined "realistic" sets: C+ = +0.2 kg, +0.3 N bias; C- = -0.2 kg, -0.3 N bias; both with 0.3 Nm friction, 0.2 N noise,
+    2 ms delay, 0.5° yaw.
+  - What reruns: M1 press (nominal table, force and impedance), M2 line (pad, flat, 5 cm/s, force and impedance), M3 force_spiral vs
+    stiff_spiral, config B (M3 showed A's coverage is marginal), r = 2 / 3.5 / 5 mm.
+  - Seeds: fresh. 100–149 for none, C+, C-; 100–129 for each single factor. Nothing is tuned in M4. If something breaks, that's
+    the result; a fix is a separately labelled v2 run on top of it, never a replacement.
+  - Baseline change: `stiff_spiral` becomes really force-blind (search starts on a timer, no F/T), which closes the M3 limit.
+    M3's version stays available (`stiff_uses_ft=True`). Addendum: rerun M3's stiff conditions on seeds 0–49 with the blind one.
+  - Bars, on C+ AND C-:
+    (a) M3 force_spiral success ≥ 45/50 at each r.
+    (b) M3 force_spiral peak force < 30 N in every successful trial.
+    (c) M1 force PI true-force RMSE < 1 N.
+    (d) M2 line force control RMSE < 1 N and zero steps without contact.
+  - Predictions (to check, not bars):
+    - payload: M1 impedance steady error ≈ ±4.9 N at ±0.5 kg, force PI ≈ 0. M3 force_spiral barely affected (tare absorbs it).
+      stiff_spiral -0.5 kg lifts ~1 mm, unloading its 5 N offset, so it should start losing the plate.
+    - bias +2 N: above the 1 N contact threshold, so false contact in free air and a premature "insert": force_spiral should fail
+      badly. -2 N: true force settles near 7 N, still inserts. |bias| = 0.5: RMSE ≈ 0.5 N, no failures.
+    - noise: σ ≤ 0.2 N fine. σ = 1 N (≈ 0.5 N after filter) should false-trigger the 1 N threshold sometimes.
+    - friction: M1 impedance steady error grows, force PI holds. Spiral tracking worsens at 1 Nm (~1 mm extra error at k_xy = 2000).
+    - delay: 1–2 ms fine. 5 ms unknown, could go unstable on the pad contact (ω ≈ 80 rad/s, 0.4 rad lag).
+    - yaw: effective clearance 1 mm - 20 mm·sinθ: 1° -> ±0.33 mm, 2° -> ±0.15 mm. At 0.75 mm pitch, 2° should miss often.
+- **M4 v1 results 2026-11-02** (`results/m4_robustness.json/.log/.png`):
+
+  | bar | C+ | C- |
+  |---|---|---|
+  | (a) M3 ≥ 45/50 per r | PASS 50/50/50 | **FAIL 0/0/0** |
+  | (b) peak < 30 N | PASS 19.6 N | **FAIL** (no successful trial; max 20.2 N overall) |
+  | (c) M1 RMSE < 1 N | PASS 0.33 N | PASS 0.37 N |
+  | (d) M2 RMSE < 1 N, zero no-contact steps | **FAIL** 0.61 N, 12 steps | **FAIL** 0.83 N, 22 steps |
+
+  - **Design flaw 1, found by M4: the insert phase had no force control.** z_des was clamped at 22 mm depth, so at the 18 mm success
+    depth the spring has 4 mm · 500 N/m = 2 N to give, and the 20 N cap never comes into it. Lift or friction above 2 N stalls it: C- at 16.4 mm,
+    -0.5 kg at 13.1 mm. Stiff survives on the same clamp because 4 mm · 5000 = 20 N. Proof: removing only the clamp takes C-, -0.5 kg
+    and 1 Nm from 0/5 to 5/5 on dev seeds. Also explains -0.2 kg passing alone (1.96 N, just under budget) but not with friction.
+    My prediction "payload barely affects force_spiral" was wrong for this reason. M3 couldn't see it: no mismatch, no resisting force.
+  - **Design flaw 2: a fixed 1 N contact threshold on a sensor that can drift.** +2 N bias triggers at once (t = 0.501 s) in free air, insert starts 33 mm
+    above the plate, 0/90. σ = 1 N the same, 0/90 (I predicted "sometimes"). In M1 the false contact sends PI into the table at speed: **193–199 N peak**.
+  - Force control trades model sensitivity for sensor sensitivity, the most useful finding here. Payload ±0.5 kg: M1 impedance
+    -4.92 / +4.87 N steady (predicted ±4.9), PI ≈ 0. F/T bias: the reverse, PI inherits the bias 1:1 (±2 N -> 2 N RMSE), impedance doesn't read the sensor.
+  - M3 sweeps, force vs stiff, inserted (config B): friction 0.5 Nm 71 vs 90/90, 1 Nm 0 vs 76/90 at **109 N**, both force failures
+    from flaw 1; -0.5 kg 0 vs 0 (stiff floats, 79 % no-contact, as predicted); noise 0.5 N 87/90; yaw 1° 89 vs 90/90; yaw 2° 72 vs 63/90 (predicted misses).
+  - Delay up to 5 ms does almost nothing here (M3 90/90, M1 0.24 N). The "could go unstable" worry didn't show. This only delays torque, not sensing.
+  - Bar (d) is a contact-loss bar: friction alone gives 5–13 no-contact steps, -0.2 kg gives 6, at 5 cm/s on the line. Not investigated, v2 doesn't touch it.
+  - Max peak depends on sample size: "none" uses 50 seeds (stiff 24.9 N), its sweeps 30 (17.5 N), so small peak differences between those rows mean nothing.
+  - Addendum: really force-blind stiff_spiral on M3 seeds matches the M3 result (A nominal 143 vs 144, peaks within 0.3 N; B identical;
+    -3 mm still 0/150). M3 limit closed: F/T timing didn't help the baseline.
+- **M4 v2, fixed 2026-11-02 before running. Labelled fix on top of v1, never a replacement:**
+  - Fix 1: remove the clamp, so z_des keeps ramping and the 20 N cap is the real push limit.
+  - Fix 2: free-space zeroing. During approach, slow baseline of the F/T (τ = 0.2 s, 50 ms warm-up from the first reading), contact = reading - baseline > 1 N for 5 ticks in a row,
+    baseline frozen at contact and subtracted for the rest of the run. Applies to M1, M2, M3 force control.
+  - Baselines unchanged. Same conditions, same bars. Fresh seeds, because 100–149 exposed the flaws: 200–249 for none/C+/C-, 200–229 sweeps.
+  - Predictions: (a), (b), (c) pass on both sets. (d) still fails, nothing here touches it. Bias ±2 N -> PI RMSE near v1's no-bias level, no 190 N spike. Payload -0.5 kg and
+    friction 1 Nm insert. Yaw 2° unchanged (search geometry). A bias that appears after contact is NOT handled by fix 2.
 
 ### M5: C++ 1 kHz control loop
 - Port the impedance law to C++/Eigen against the MuJoCo C API.
