@@ -144,6 +144,88 @@ Run: `.venv/bin/python m0_smoke.py`, `.venv/bin/python m1_press.py`, `.venv/bin/
 - Strategy: approach -> contact -> spiral search under force -> insert with compliance.
 - Metric: success rate over 50 seeds per perturbation level, time to insert, max contact force.
 - Baseline: same task with stiff position control (expect jamming / force spikes).
+- Fixed 2026-11-02 BEFORE any peg run:
+  - Geometry: square peg 20 mm, blind square hole 21 mm (1 mm total clearance, ±0.5 mm per axis, no chamfer),
+    20 mm deep. Peg yaw aligned with the hole (position error only; yaw is left for M4).
+  - Contact: compliant pad (dmin 0.2, as M2), μ=0.5. Rigid contact + μ=0.2/1.0 run as sensitivity, not bars.
+  - True hole = believed hole + r in a random direction per seed. r = 2 / 3.5 / 5 mm, plus r = 0 sanity.
+  - Controllers:
+    - `force_spiral` (proposed): approach 2 cm/s, on contact PI to Fz = 5 N, Archimedean spiral at k_xy = 2000
+      (friction lag μN/k = 1.25 mm; at k_xy = 500 it would be 5 mm and the inner spiral wouldn't move the peg).
+      Drop of 0.5 mm below the measured contact height ends the search. Insert: k_xy = 200 around the current
+      xy, z ramps at 1 cm/s with k_z = 500 and a 20 N force cap.
+    - `stiff_blind`: k = 5000 xyz, straight down at the believed hole to 20 mm depth, no search.
+    - `compliant_blind`: k = 500, same blind descent (what compliance alone buys, no search).
+    - `stiff_spiral`: k = 5000 xyz, same spiral, z held at believed surface - 1 mm (= 5 N if the height is
+      right), same drop test, stiff insert. This is the fair baseline: search without force feedback.
+  - Tuning: only spiral speed v ∈ {1, 2} cm/s and pitch p ∈ {0.5, 0.75, 1.0} mm, on dev seeds (≥1000), r = 5 mm.
+    Pick the fastest with 10/10, then freeze. Test seeds 0–49 are run once after that.
+  - Success (ground truth): peg tip ≥ 18 mm below the true plate top within the time limit.
+  - Peak force = max over time of the SUM of per-contact force magnitudes on the peg, so opposing wall forces
+    (jamming) count instead of cancelling.
+  - Bars on test seeds, `force_spiral`:
+    (a) success ≥ 48/50 at each of r = 2, 3.5, 5 mm, fixture height as believed.
+    (b) peak force < 30 N in every successful trial of (a).
+    (c) success ≥ 48/50 at each r with the fixture secretly ±3 mm in height.
+    (d) during search, over all trials of (a): Fz RMSE < 1 N and < 1 % of steps without contact.
+  - Predictions (to check, not bars): `stiff_blind` 0 % at r ≥ 2 with ~100 N (k·20 mm); `compliant_blind` 0 % at
+    r ≥ 2, ~100 % at r = 0, ~10 N; `force_spiral` median search for r = 5 ≈ πr²/(p·v); `stiff_spiral` may well tie
+    on correct height (then say so), fixture +3 mm -> ~20 N during search, -3 mm -> peg floats 2 mm above and
+    never finds the hole, so height uncertainty is where force feedback should matter.
+- Dev phase 2026-11-02 (seeds 1000–1009, r = 5 mm; test seeds not touched yet):
+  - Bug fixed: `settle` had no fall check, so a peg that clipped the rim and fell got the PI pushing into
+    nothing (20 N). Added RIM_FALL = 1.5 mm.
+  - Finding: free-space descent drifts 0.59 mm in x at k = 500, 2 cm/s (more than the ±0.5 mm clearance, so
+    even r = 0 clips the rim). Scales with v and 1/k, gone at rest. Cause = Menagerie's joint damping (1 Nms/rad),
+    which the controller doesn't compensate: zeroing it gives 0.036 mm. Not a bug to fix: it's the first real model
+    mismatch in the project, and M4 should count it as already present.
+  - Grid, all 10/10 (v, p: median search, Fz RMSE, no-contact %): 1 cm/s 0.5 mm: 13.4 s, 0.68, 1.11 ·
+    1/0.75: 9.1 s, 0.68, 1.15 · 1/1.0: 8.2 s, 0.75, 1.52 · 2/0.5: 6.7 s, 1.23, 4.63 · 2/0.75: 4.6 s, 1.28, 4.98 ·
+    2/1.0: 4.2 s, 1.32, 5.41.
+  - The selection rule picks config A = 2 cm/s, 1.0 mm, which already misses bar (d) on dev. No grid point meets the
+    no-contact part of (d). Bars and grid stay as they are. Test runs both: **A (the rule's pick, this is the
+    registered result)** and **B = 1 cm/s, 0.75 mm (chosen after seeing dev, reported as such)**.
+- **M3 results 2026-11-02** (test seeds 0–49, run once, `results/m3_peg.json`, figure `results/m3_peg.png`):
+
+  | bar | A (registered) 2 cm/s, 1 mm | B (post-dev) 1 cm/s, 0.75 mm |
+  |---|---|---|
+  | (a) ≥ 48/50 at r = 2 / 3.5 / 5 | PASS 49 / 50 / 50 | PASS 50 / 50 / 50 |
+  | (b) peak < 30 N | PASS 16.5 N | PASS 14.5 N |
+  | (c) ≥ 48/50 at ±3 mm height | PASS, worst 48/50 (-3 mm, r = 2) | PASS 300/300 |
+  | (d) search Fz RMSE < 1 N and no-contact < 1 % | **FAIL** 1.29 N, 5.29 % | **FAIL** 0.62 N, 1.09 % |
+
+  Pooled over r (150 trials per cell), force_spiral vs stiff_spiral (inserted, max peak force):
+
+  | fixture height | A force | A stiff | B force | B stiff |
+  |---|---|---|---|---|
+  | -3 mm | 148, 16.4 N | **0**, never touches | 150, 14.5 N | **0**, never touches |
+  | as believed | 149, 16.5 N | 144, 25.4 N | 150, 14.5 N | 150, 17.5 N |
+  | +3 mm | 150, 16.4 N | 150, 54.6 N | 150, 14.6 N | 150, 52.4 N |
+
+  - Main result: on a correct height, stiff + spiral TIES at 1 cm/s (B: slightly faster, 14.1 vs 14.7 s median at
+    r = 5). Force feedback pays off when height is uncertain: 3 mm low = 0/150 vs 150/150, 3 mm high = 52 N vs 15 N.
+  - Blind controllers, predictions confirmed: stiff_blind 0/150 at r ≥ 2 with 98 N median (k·20 mm = 100 N);
+    compliant_blind 0/150 with ~10 N, 5/5 at r = 0. Compliance alone doesn't find a hole 2 mm away.
+  - Search time prediction πr²/(p·v) holds at r = 5: 3.93 s vs 3.89 (A), 10.47 s vs 10.05 (B). Total median at r = 5:
+    8.5 s (A), 14.7 s (B). Stiff at +3 mm: search RMSE 13.7 N -> ~19 N mean, as predicted (~20); the peak
+    (52–55 N, sum of magnitudes incl. friction + drop transient) is well above that.
+  - Config A misses are all search-phase, none jammed: every miss ended at depth 0 with the search exhausted. Replay
+    of seed 40: the peg clips a window corner for 8 ms and sinks 0.05 mm. 1 mm pitch = the window width, so coverage
+    is marginal at 2 cm/s. No jam in any of the force_spiral trials.
+  - Sensitivity, force_spiral (not bars): rigid contact B 150/150, 27.5 N, no-contact 11–16 %; rigid A 147/150.
+    So insertion doesn't depend on the pad, only search force quality does. μ = 0.2: B 150/150, A 147/150.
+    μ = 1: B 150/150, **A 141/150 (46 / 45 / 50, under the 48 level)**.
+  - **Correction to M2's wording:** no-contact FALLS with μ here (B: 6 % / 1 % / 0.25 % at μ = 0.2 / 0.5 / 1), where the M2
+    ball on a rigid contact at 5 cm/s got worse with μ. Floating peg, no arm (`m3_isolate.py`): 8.5 % / 0.53 % / 0 %
+    at 1 cm/s, so the arm doesn't cause it, and it isn't a simple function of μ. A floating ball is clean at 1 cm/s
+    (0 % at all μ), so the flat peg face matters. Mechanism not established. Don't claim one.
+  - Limits:
+    - `stiff_spiral` isn't fully force-blind: it uses the F/T to time the start of search (its z command never uses
+      force). Found after the test, left as run. Effect of a truly blind version not tested.
+    - `stiff_spiral` r = 0 is 0/5 at ~41 N: an artifact of my baseline logic (already 1 mm into the hole, spirals into the
+      wall, drop never triggers). Not a registered level. Not evidence against stiff control.
+    - Yaw error zero, ideal F/T, no chamfer, success stops at 18 mm (never seats on the floor).
+    - The pad softens wall contact too.
 
 ### M4: robustness (where the sim stops being perfect)
 Model mismatch the real robot has: payload mass error (±0.5 kg), unmodelled joint friction,

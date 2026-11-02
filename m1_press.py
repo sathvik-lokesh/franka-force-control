@@ -42,6 +42,7 @@ class ForcePI:
     ki: float = 20.0
     ramp: float = 0.02         # s, chosen by the ramp sweep in main() on the nominal table; reference ramp from the switch command up to F_DES
     i_max: float = 10.0        # N, clamp on the integral contribution
+    f_des: float = F_DES       # N, setpoint the reference ramps up to
 
     def reset(self, f_switch: float, t_switch: float):
         """f_switch = downward force the impedance law was commanding at the switch.
@@ -56,7 +57,7 @@ class ForcePI:
 
     def reference(self, t: float) -> float:
         a = min(1.0, (t - self.t0) / self.ramp)
-        return self.f0 + a * (F_DES - self.f0)
+        return self.f0 + a * (self.f_des - self.f0)
 
     def wrench_z(self, f_meas: float, t: float, dt: float) -> float:
         f_ref = self.reference(t)

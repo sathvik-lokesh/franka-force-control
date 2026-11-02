@@ -1,0 +1,134 @@
+[
+  {
+    "shape": "peg",
+    "mu": 0.2,
+    "v": 0.01,
+    "pitch": 0.00075,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 1.7617560754573793,
+    "nocontact_pct": 8.524191587648918,
+    "steps": 20565
+  },
+  {
+    "shape": "peg",
+    "mu": 0.5,
+    "v": 0.01,
+    "pitch": 0.00075,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 0.4017306657879559,
+    "nocontact_pct": 0.5300267444687576,
+    "steps": 20565
+  },
+  {
+    "shape": "peg",
+    "mu": 1.0,
+    "v": 0.01,
+    "pitch": 0.00075,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 0.009122762213946534,
+    "nocontact_pct": 0.0,
+    "steps": 20565
+  },
+  {
+    "shape": "peg",
+    "mu": 0.2,
+    "v": 0.02,
+    "pitch": 0.001,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 2.512707860542387,
+    "nocontact_pct": 17.101861427094107,
+    "steps": 7736
+  },
+  {
+    "shape": "peg",
+    "mu": 0.5,
+    "v": 0.02,
+    "pitch": 0.001,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 2.2167177014598423,
+    "nocontact_pct": 14.619958634953464,
+    "steps": 7736
+  },
+  {
+    "shape": "peg",
+    "mu": 1.0,
+    "v": 0.02,
+    "pitch": 0.001,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 0.04442836004039572,
+    "nocontact_pct": 0.0,
+    "steps": 7736
+  },
+  {
+    "shape": "ball",
+    "mu": 0.2,
+    "v": 0.01,
+    "pitch": 0.00075,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 0.0037174559886003857,
+    "nocontact_pct": 0.0,
+    "steps": 20565
+  },
+  {
+    "shape": "ball",
+    "mu": 0.5,
+    "v": 0.01,
+    "pitch": 0.00075,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 0.004088124639069891,
+    "nocontact_pct": 0.0,
+    "steps": 20565
+  },
+  {
+    "shape": "ball",
+    "mu": 1.0,
+    "v": 0.01,
+    "pitch": 0.00075,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 0.0019055484958133131,
+    "nocontact_pct": 0.0,
+    "steps": 20565
+  },
+  {
+    "shape": "ball",
+    "mu": 0.2,
+    "v": 0.02,
+    "pitch": 0.001,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 1.566516619327388,
+    "nocontact_pct": 7.18717683557394,
+    "steps": 7736
+  },
+  {
+    "shape": "ball",
+    "mu": 0.5,
+    "v": 0.02,
+    "pitch": 0.001,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 0.02339274117859412,
+    "nocontact_pct": 0.0,
+    "steps": 7736
+  },
+  {
+    "shape": "ball",
+    "mu": 1.0,
+    "v": 0.02,
+    "pitch": 0.001,
+    "mass": 4.6,
+    "dmin": 0.2,
+    "search_rmse_N": 0.02117684144572248,
+    "nocontact_pct": 0.0,
+    "steps": 7736
+  }
+]
