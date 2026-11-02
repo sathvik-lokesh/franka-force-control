@@ -326,5 +326,29 @@ F/T sensor noise + bias, 1–5 ms control delay. Re-run M1–M3 and plot how eac
 - Measure controller compute time per tick and loop jitter vs a 1 ms deadline
   (plain Linux + WSL2 is NOT real-time, misses are reported, this is not a real-time claim).
 - Check: C++ and Python controllers give the same torques on the same states (max abs diff).
+- Fixed 2026-11-02 BEFORE any C++ run:
+  - Port: the impedance law + nullspace, F/T tare + contact threshold, ForcePI. Scenario = M1 force control, nominal table, same stop tick. Model from a Python-saved .mjb,
+    so both sides run the same compiled model on the same libmujoco.
+  - Tests: **law**: replay every tick's recorded controller inputs (pose, J, M, q, qd, bias, targets) open-loop through C++. **closed**: C++ runs its own sim from t = 0 and compares torque tick by tick
+    with the Python run. **rt**: 60 s 1 kHz loop on a Linux absolute-time schedule, sim step + controller each tick; sleep (idle), spin (idle), sleep with 16 busy processes on 16 threads.
+  - Bars: (a) law max |Δτ| < 1e-9 Nm. (b) closed max |Δτ| < 1e-6 Nm. (c) C++ controller compute p99.9 < 100 µs.
+  - rt has NO pass bar: WSL2 isn't real-time. Report wake latency, tick time and deadline misses (tick ends after its 1 ms slot). Sim step counts in tick time; a real robot wouldn't have it.
+  - Predictions: C++ 10–30 µs vs Python 100–300 µs. Idle sleep p99 wake latency ~100 µs, some misses. Spin much tighter. Under load, spikes of many ms. Closed-loop diff could grow above (a) because
+    numpy and Eigen round differently and contact amplifies that.
+- **M5 results 2026-11-02** (`results/m5_cpp.json/.log`, `m5_run.py`, ~3.5 min). All bars PASS, no compiler warnings:
+  - (a) law, 7847 ticks: max |Δτ| 8.5e-14 Nm. (b) closed loop, C++ runs its own sim: 3.5e-11 Nm. It grows from 1e-13 to 3e-11 over the run: rounding differences (numpy vs Eigen) feeding back through contact, still 5 orders under the bar.
+  - (c) controller compute, replay: C++ p50 3.2, p99 4.4, p99.9 24.5, max 37 µs. Closed loop p99.9 30.7 µs. Python on the same trace p50 65, p99 183, p99.9 304, max 1161 µs: 20x at the median. My 10–30 µs guess was high.
+    Python isn't ruled out by mean compute alone; what C++ buys is tail margin. mj_step: 8.8 µs p50, so a tick is ~12 µs of work.
+  - rt, 60000 ticks, ticks ending after their 1 ms slot (none of this is an RT claim):
+
+    | mode | misses | wake latency p50 / p99 / max | control p50 | worst tick end | longest miss run |
+    |---|---|---|---|---|---|
+    | sleep, idle | 12 (0.02 %) | 86 / 198 / 1732 µs | 8.3 µs | 1.9 ms | 1 |
+    | spin, idle | 16 (0.03 %) | 0.03 / 6.6 / 4330 µs | 5.8 µs | 4.4 ms | 4 |
+    | sleep, 16 busy procs | 2404 (4 %) | 64 / 3300 / 31926 µs | 8.5 µs | 32.9 ms | 47 |
+
+  - Spinning tightened typical latency a lot (p99 198 -> 6.6 µs) and didn't reduce misses (my "much tighter" holds for typical only): the worst gaps are something spinning can't stop. Likely WSL2's VM being scheduled
+    by Windows; not measured. A Franka's 1 kHz FCI loop aborts on a few missed cycles, so this box under load would fault it. Compute isn't the limit, scheduling is: a real deployment needs PREEMPT_RT.
+  - rt control time (8 µs) is above replay (3.2 µs): sleeping loses cache. A single C++ run, not a distribution across boots.
 
 ### M6: README + demo GIFs
